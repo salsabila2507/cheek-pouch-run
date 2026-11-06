@@ -1,0 +1,27 @@
+{
+  "name": "Cheek Pouch Run",
+  "author": "0xyas",
+  "description": "Original real-wheel forest runner on squeekrun.site. Heavy cheek-pouch risk, block burrow banking, ZOOMIES, playable sleep survival. Live never simulates RPM.",
+  "integration": {
+    "statusEndpoint": "https://api.squeekchain.com/v1/status",
+    "schemaVersion": 1,
+    "pollIntervalMs": 5000,
+    "network": "Ethereum Sepolia",
+    "blockSource": "builder.projected.blockHeight",
+    "blockFinality": "optimistic, not settled",
+    "walletRequired": false,
+    "rewards": "local non-monetary game points"
+  },
+  "verification": {
+    "status": "pending-verify",
+    "imdJob": null,
+    "imdSite": null,
+    "issuedPageTag": "099e6481-92a0-4eb5-af7c-29c2b0d3b42d",
+    "publicRepository": "https://github.com/salsabila2507/cheek-pouch-run",
+    "approval": null,
+    "domain": "squeekrun.site",
+    "txtHost": "_squeekchain",
+    "verifyBy": "2026-11-13T17:23:00+07:00"
+  },
+  "liveUrl": "https://squeekrun.site"
+}
