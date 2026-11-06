@@ -1,12 +1,13 @@
 # Publication and ownership checklist
 
-Current state: built and tested; **publicly hosted**, **not submitted**, **not IMD-built**. No Squeekchain verification or team approval is claimed.
+Current state: built and tested; **publicly hosted on squeekrun.site**; Direct Submission **pending verify**; **not IMD-built**. No Squeekchain team approval is claimed.
 
 - Public repository: https://github.com/salsabila2507/cheek-pouch-run
-- Production game: https://cheek-pouch-run.vercel.app
+- Production game: https://squeekrun.site
+- Mirror: https://cheek-pouch-run.vercel.app
 - Creator: **0xyas**; GitHub account and commit identity: **salsabila2507**.
 
-Source publication and Vercel hosting do not supply a verified wallet, an IMD job ID, an issued page tag or approval. `project.json` records the public repository and live URL, keeps verification `not-submitted`, and keeps `imdJob`, `imdSite`, `issuedPageTag` and `approval` as `null`. Never invent these values or reuse another project’s values.
+Source publication and Vercel hosting do not supply team approval. `project.json` records the public repository, live URL `https://squeekrun.site`, verification `pending-verify`, issued page tag `099e6481-92a0-4eb5-af7c-29c2b0d3b42d`, and keeps `imdJob`, `imdSite` and `approval` as `null`. Never invent values or reuse another project’s values.
 
 ## IMD path
 1. Use the published repository and production game linked above for this project. Confirm any different destination with 0xyas before changing it.
@@ -30,4 +31,4 @@ Source publication and Vercel hosting do not supply a verified wallet, an IMD jo
 - Obtain Squeekchain team approval; this document is not approval.
 
 ## Finished-run update
-The local update preserves real hardware validation, optimistic/settled separation and one-time observed-block encounters. Sleep is playable without synthetic RPM or seed scoring; transport failure remains frozen. Pouch pressure, bank goals and night-survival bests are browser-local game mechanics, not onchain rewards. Code lane rules were reopened at https://squeekchain.com/genesis/code; the build is still not submitted, not IMD-built and not approved. Publishing this update is a separate action from building and testing it.
+The local update preserves real hardware validation, optimistic/settled separation and one-time observed-block encounters. Sleep is playable without synthetic RPM or seed scoring; transport failure remains frozen. Pouch pressure, bank goals and night-survival bests are browser-local game mechanics, not onchain rewards. Code lane rules were reopened at https://squeekchain.com/genesis/code; the build is pending Direct Submission verify, not IMD-built and not approved. Optional burrow seal uses Sepolia SQK approve(self, 0) only. Publishing this update is a separate action from building and testing it.

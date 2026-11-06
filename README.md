@@ -18,7 +18,11 @@ npm start
 # http://127.0.0.1:4179
 ```
 
-The shipped game is plain HTML/CSS/ES modules/Canvas with **zero runtime packages**, no private keys, no backend and no wallet connection. `@napi-rs/canvas` and `linkedom` are development-only test tools. Serve `dist/` on a static host; opening `index.html` as `file://` is not supported.
+The shipped game is plain HTML/CSS/ES modules/Canvas with **zero runtime packages**, no private keys and no backend. Play works without a wallet. An optional **burrow seal** can connect an injected wallet on Ethereum Sepolia and send SQK `approve(self, 0)` (gas only). `@napi-rs/canvas` and `linkedom` are development-only test tools. Serve `dist/` on a static host; opening `index.html` as `file://` is not supported.
+
+## Burrow seal (optional, Sepolia)
+
+Connect a wallet, switch to Ethereum Sepolia, and seal your burrow with one SQK `approve` to yourself for amount `0`. No SQK moves. Seeds stay local game points. Recent self-zero approvals show on the site wall (a shared public signal used by other fan apps too). Token: [`0x5501…db60`](https://sepolia.etherscan.io/token/0x5501e1fa81be1c3f49225fa7668da0245d07db60).
 
 ## Controls
 
@@ -66,10 +70,10 @@ Seeds are **local game points, not SQK, an airdrop, money, mining rewards or an 
 
 This is an independent fan project. It is **not approved, verified, affiliated with Squeekchain, or built by IMD yet**. The Code lane’s automatic and team reviews decide approval; nobody can honestly guarantee “100% accepted” or uniqueness against unseen/unpublished projects.
 
-Project status: **publicly hosted, not IMD-built and not submitted**. A local build or commit is not evidence that the latest changes have reached production; verify the deployed build before claiming a release. Public hosting does not imply Squeekchain verification or team approval.
+Project status: **publicly hosted on squeekrun.site**, Direct Submission **pending verify**, **not IMD-built**, **not approved**. A local build or commit is not evidence that the latest changes have reached production; verify the deployed build before claiming a release. Public hosting does not imply Squeekchain team approval.
 
 - Source: [salsabila2507/cheek-pouch-run](https://github.com/salsabila2507/cheek-pouch-run)
-- Live game: [cheek-pouch-run.vercel.app](https://cheek-pouch-run.vercel.app)
+- Live game: [squeekrun.site](https://squeekrun.site) (mirror [cheek-pouch-run.vercel.app](https://cheek-pouch-run.vercel.app))
 
 ## Squeekchain Code lane / IMD handoff
 
@@ -80,7 +84,7 @@ The product is designed for “Games and mods powered by Squeekchain”, avoidin
 - For IMD, use the job brief in [`docs/IMD-JOB.md`](docs/IMD-JOB.md); fund the first real job from the regular wallet verified on **your own** Genesis profile. Do not reuse another project’s attribution.
 - Keep the resulting real `.imd.site` domain and actual IMD job ID. Do not claim this local work was an IMD job.
 - For direct submission, use the exact DNS record, page tag and repository README line issued by Squeekchain. None has been issued for this project.
-- `index.html` has a clearly marked comment where the actual issued page tag can later be inserted. `project.json` truthfully records verification as `not-submitted` and all unissued IDs as `null`. It is project metadata, not an official Squeekchain schema.
+- `index.html` carries the issued page meta tag `099e6481-92a0-4eb5-af7c-29c2b0d3b42d`. `project.json` records verification as `pending-verify` with domain `squeekrun.site`. It is project metadata, not an official Squeekchain schema. TXT proof is still the owner’s job.
 - See [`docs/VERIFICATION.md`](docs/VERIFICATION.md) for the remaining publication and attribution steps.
 
 ## Verification

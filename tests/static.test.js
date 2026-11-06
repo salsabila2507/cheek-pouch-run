@@ -11,15 +11,15 @@ test('every controller DOM target exists once and public assets are local',()=>{
 });
 test('all runtime imports resolve and no verification/job/hosting claim is fabricated',()=>{
  for(const file of readdirSync(new URL('src',root)))for(const match of read('src/'+file).matchAll(/from ['"](\.[^'"]+)['"]/g))assert.ok(existsSync(new URL(match[1],new URL('src/'+file,root))),match[1]);
- const metadata=JSON.parse(read('project.json'));assert.equal(metadata.author,'0xyas');assert.equal(metadata.verification.status,'not-submitted');assert.equal(metadata.verification.imdJob,null);assert.equal(metadata.verification.publicRepository,'https://github.com/salsabila2507/cheek-pouch-run');assert.equal(metadata.liveUrl,'https://cheek-pouch-run.vercel.app');assert.equal(metadata.verification.imdSite,null);assert.equal(metadata.verification.issuedPageTag,null);assert.equal(metadata.verification.approval,null);
+ const metadata=JSON.parse(read('project.json'));assert.equal(metadata.author,'0xyas');assert.equal(metadata.verification.status,'pending-verify');assert.equal(metadata.verification.imdJob,null);assert.equal(metadata.verification.publicRepository,'https://github.com/salsabila2507/cheek-pouch-run');assert.equal(metadata.liveUrl,'https://squeekrun.site');assert.equal(metadata.verification.imdSite,null);assert.equal(metadata.verification.issuedPageTag,'099e6481-92a0-4eb5-af7c-29c2b0d3b42d');assert.equal(metadata.verification.approval,null);assert.equal(metadata.verification.domain,'squeekrun.site');assert.equal(metadata.integration.optionalOnchain.token,'0x5501e1fa81be1c3f49225fa7668da0245d07db60');
  assert.match(read('index.html'),/Seeds are local game points, not SQK/);assert.match(read('README.md'),/not IMD/);
 });
 
 for(const file of ['README.md','docs/VERIFICATION.md'])test(`${file} records public hosting without inventing approval`,()=>{
  const text=read(file);
  assert.ok(text.includes('https://github.com/salsabila2507/cheek-pouch-run'));
- assert.ok(text.includes('https://cheek-pouch-run.vercel.app'));
+ assert.ok(text.includes('https://cheek-pouch-run.vercel.app') || text.includes('https://squeekrun.site'));
  assert.doesNotMatch(text,/not publicly deployed|not externally hosted|no public repo created|No public deployment or repository has been created/i);
- assert.match(text,/not submitted|not-submitted/);
+ assert.match(text,/pending verify|pending-verify|not submitted|not-submitted/);
  assert.match(text,/not IMD/);
 });

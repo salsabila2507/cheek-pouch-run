@@ -7,7 +7,7 @@
   "scripts": {
     "test": "node --test tests/*.test.js",
     "start": "node tools/serve.js",
-    "check": "node --check src/game.js && node --check src/engine.js && node --check src/wheel.js && node --check src/art.js && node --check src/storage.js && node --check src/transport.js",
+    "check": "node --check src/game.js && node --check src/engine.js && node --check src/wheel.js && node --check src/art.js && node --check src/storage.js && node --check src/transport.js && node --check src/onchain.js",
     "build": "node tools/build.js"
   },
   "engines": {

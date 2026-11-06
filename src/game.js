@@ -3,6 +3,7 @@ import {createStatusPoller} from './transport.js';
 import {createRun,stepRun,checkpoint,CAPACITY,loadFor,objectiveFor} from './engine.js';
 import {drawScene} from './art.js';
 import {readRecord,saveRecord} from './storage.js';
+import {createBurrowSeal} from './onchain.js';
 
 export function bootGame({document=globalThis.document,window=globalThis.window,clock=()=>Date.now(),storage,fetchImpl=globalThis.fetch,autoPoll=true,autoFrame=true}={}){
  if(storage===undefined){try{storage=window.localStorage;}catch{storage=null;}}
@@ -10,7 +11,7 @@ export function bootGame({document=globalThis.document,window=globalThis.window,
  if(!ctx){$('live-note').textContent='Canvas 2D is unavailable in this browser.';return null;}
  const tracker=new WheelTracker(),reducedMotion=window.matchMedia?.('(prefers-reduced-motion: reduce)').matches||false;
  const input={jump:false,duck:false,home:false};let run=null,paused=false,saved=false,lastPracticeHeight='1',animTime=0,toastUntil=0,width=800,height=420,dpr=1,rafId=0,lastFrame=0,destroyed=false,curtainType='';
- let previousPhase=null;
+ let previousPhase=null,seal=null;
  let sound=false,audio=null,lastSeedSound=0;const removers=[];
  function on(target,type,fn,opts){target.addEventListener(type,fn,opts);removers.push(()=>target.removeEventListener(type,fn,opts));}
  function text(id,value){const node=$(id),string=String(value);if(node.textContent!==string)node.textContent=string;}
@@ -31,7 +32,7 @@ export function bootGame({document=globalThis.document,window=globalThis.window,
    canvas.width=Math.round(width*dpr);canvas.height=Math.round(height*dpr);ctx.setTransform(dpr,0,0,dpr,0,0);
    if(run&&old!==width){const factor=width/old;run.width=width;run.x=Math.max(85,width*.2);for(const e of run.entities)e.x*=factor;}
  }
- function records(){text('best-live',readRecord('live',storage).best);text('best-practice',readRecord('practice',storage).best);text('best-live-sleep',readRecord('live',storage).sleep);text('best-practice-sleep',readRecord('practice',storage).sleep);}
+ function records(){const live=readRecord('live',storage),practice=readRecord('practice',storage);text('best-live',live.best);text('best-practice',practice.best);text('best-live-sleep',live.sleep);text('best-practice-sleep',practice.sleep);text('seal-seeds',live.best);seal?.paintWallet?.();}
  function notice(message,seconds=3){text('toast',message);toastUntil=animTime+seconds;show('toast',true);}
  function telemetry(){
    const w=tracker.current(clock());$('connection-dot').className=`status-dot ${w.phase}`;text('rpm',w.rpm===null?'—':w.rpm.toFixed(1));text('block',w.height||'—');$('block').title=w.height?`Projected (not settled): ${w.height}`:'Unknown';
@@ -152,7 +153,9 @@ export function bootGame({document=globalThis.document,window=globalThis.window,
  on(document,'visibilitychange',()=>{if(document.hidden){tracker.fail('Tab was inactive');if(run?.status==='running')togglePause(true);}});
  on(window,'resize',resize);const observer=window.ResizeObserver?new window.ResizeObserver(resize):null;observer?.observe(stage);
  function frame(at){if(destroyed)return;const dt=lastFrame?Math.min((at-lastFrame)/1000,.05):0;lastFrame=at;update(dt);rafId=window.requestAnimationFrame(frame);}
+ seal=createBurrowSeal({document,ethereum:window.ethereum,fetchImpl,getSeedCount:()=>readRecord('live',storage).best,onNotice:(message,seconds=3)=>notice(message,seconds)});
+ seal.bind();
  resize();records();telemetry();update(0);if(autoPoll)poller.start();if(autoFrame)rafId=window.requestAnimationFrame(frame);
- return {start,receive,update,tracker,get run(){return run;},destroy(){destroyed=true;poller.stop();observer?.disconnect();window.cancelAnimationFrame?.(rafId);for(const remove of removers)remove();void audio?.close();}};
+ return {start,receive,update,tracker,seal,get run(){return run;},destroy(){destroyed=true;poller.stop();observer?.disconnect();window.cancelAnimationFrame?.(rafId);for(const remove of removers)remove();void audio?.close();}};
 }
 if(typeof document!=='undefined'&&document.querySelector('#scene'))bootGame();
