@@ -1,0 +1,100 @@
+# Cheek Pouch Run
+
+**His wheel. Your wild run.** An original mobile-first forest runner by **0xyas**, powered by Squeektoshi’s hardware telemetry on Squeekchain. Independent project by **0xyas** on GitHub `salsabila2507`. Original code and assets.
+
+Jump mushrooms, duck owls, double-jump for seed arcs, and decide whether your cheeks can survive another stretch. The 40-seed pouch visibly grows and gets a little heavier. Three hits end the run; each hit spills half your unbanked seeds. Heading home banks the existing pouch and ends your run. A newly observed wheel block creates golden seeds and a physical burrow: land at it to bank and keep running.
+
+## Run locally
+
+```sh
+npm ci
+npm test
+npm run build
+npm start
+# http://127.0.0.1:4179
+```
+
+The shipped game is plain HTML/CSS/ES modules/Canvas with **zero runtime packages**, no private keys, no backend and no wallet connection. `@napi-rs/canvas` and `linkedom` are development-only test tools. Serve `dist/` on a static host; opening `index.html` as `file://` is not supported.
+
+## Controls
+
+| Action | Keyboard | Touch |
+| --- | --- | --- |
+| Jump / double jump | Space, Up or W; press twice | Tap Jump or the scene, twice for double |
+| Duck | Hold Down or S | Hold Duck |
+| Return home and bank | H | Go home & bank |
+| Pause | P or Escape | Pause icon |
+
+Sound is optional and starts muted. Reduced-motion preferences disable idle motion and ZOOMIES streaks. Backgrounding the tab pauses the game; it never fast-forwards missed blocks.
+
+## The real-wheel contract
+
+Source: [`GET https://api.squeekchain.com/v1/status`](https://api.squeekchain.com/v1/status), [official reference](https://docs.squeekchain.com/developers/api/). Polled about every five seconds, with a four-second request timeout and `Retry-After` support for 429/503. No credentials. No random/simulated fallback in Live.
+
+| Official signal | Gameplay consequence |
+| --- | --- |
+| Fresh, hardware-provenance, healthy schema v1; `coreStatus=ACTIVE` and positive `rpmMilli` | Live scoring and seed collection open |
+| `measurement.rpmMilli / 1000` | Runner speed = `min(395, 140 + 2.8 × RPM)` game pixels/second |
+| RPM ≥ 70 | ZOOMIES: twice the value per seed pickup; faster physical obstacles |
+| `IDLE` or zero RPM | Sleeping: new seeds and scored distance stop, trap cadence rises, existing pouch may be banked by retreating |
+| A forward `builder.projected.blockHeight` during continuous fresh observation | Exactly **one** golden-seed burst and burrow checkpoint for that poll, even if height advanced by many |
+| Missing, malformed, stale, nonhardware, unhealthy or unknown status / transport failure | Entire Live run freezes, including physics, distance, traps and scoring |
+
+Numbers carrying block heights remain decimal strings and are compared as `BigInt`. `builder.anchor.blockHeight` is shown separately as the **settled** height. **Projected blocks are optimistic accepted work, not finalized Ethereum transactions or issued SQK.**
+
+The first sample is a baseline, not a reward. Reconnects, epoch/installation changes and expired heartbeat rebaseline without catch-up. Duplicate/rollback heights cannot repeat checkpoints. Blocks seen in the lobby or while paused grant nothing later. Source timestamps must be within their advertised freshness budget (capped at 120s) and cannot be >10s in the future; the transport heartbeat independently expires after 12s. Polling means changes are observed with sampling delay, not instantaneously.
+
+**Practice is explicitly simulated** using a separate deterministic training clock. Its records use a different browser-storage key from Live. Practice does not rescue an unavailable Live run and never enters Live scores. Live cannot accidentally accept a simulated wheel at the engine boundary.
+
+## Why this is a game, not an API panel
+
+- An original, fully playable double-jump/duck platform runner with collisions, seed arcs, hit spill, invulnerability and an extraction decision.
+- Real RPM changes moment-to-moment collision timing. Sleep changes both available actions and hazard pressure. Observed wheel blocks spawn physical encounters rather than just changing a label.
+- Custom code-drawn pixel hamster with growing cheeks and mint scarf, layered forest, burrow, mushrooms, owls and particle effects; no sprite pack, copied game, template or generated art asset.
+- Not a treasury cash-out game, prediction market, NFT naming tool, tower/raid, DeFi vault, alert bot or dashboard. See the [board comparison](docs/BOARD-COMPARISON.md) for scope and limits of the comparison.
+
+## Honest limits
+
+Seeds are **local game points, not SQK, an airdrop, money, mining rewards or an NFT**. Run metres are game distance, not Squeektoshi’s measured distance. Records are browser-local and editable by their owner: there is no authenticated public leaderboard or anti-cheat claim. Storage-disabled browsers can still play without saving.
+
+This is an independent fan project. It is **not approved, verified, affiliated with Squeekchain, or built by IMD yet**. The Code lane’s automatic and team reviews decide approval; nobody can honestly guarantee “100% accepted” or uniqueness against unseen/unpublished projects.
+
+Current status: **publicly hosted, not IMD-built and not submitted**. Public hosting does not imply Squeekchain verification or team approval.
+
+- Source: [salsabila2507/cheek-pouch-run](https://github.com/salsabila2507/cheek-pouch-run)
+- Live game: [cheek-pouch-run.vercel.app](https://cheek-pouch-run.vercel.app)
+
+## Squeekchain Code lane / IMD handoff
+
+Official rules: https://squeekchain.com/genesis/code
+
+The product is designed for “Games and mods powered by Squeekchain”, avoiding read-only dashboards, thin wrappers, templates and clones. A functioning local product is not the final ownership/submission step.
+
+- For IMD, use the job brief in [`docs/IMD-JOB.md`](docs/IMD-JOB.md); fund the first real job from the regular wallet verified on **your own** Genesis profile. Do not reuse another project’s attribution.
+- Keep the resulting real `.imd.site` domain and actual IMD job ID. Do not claim this local work was an IMD job.
+- For direct submission, use the exact DNS record, page tag and repository README line issued by Squeekchain. None has been issued for this project.
+- `index.html` has a clearly marked comment where the actual issued page tag can later be inserted. `project.json` truthfully records verification as `not-submitted` and all unissued IDs as `null`. It is project metadata, not an official Squeekchain schema.
+- See [`docs/VERIFICATION.md`](docs/VERIFICATION.md) for the remaining publication and attribution steps.
+
+## Verification
+
+```sh
+npm test             # wheel, transport, runner, records, Canvas, DOM integration
+npm run check        # JS syntax
+npm run build        # allowlisted static output only
+node tools/render-art.js  # standalone Canvas art samples, not browser screenshots
+```
+
+Read [`docs/QA.md`](docs/QA.md) for evidence and outstanding real-browser checks. The public source and live game are linked above. `vercel.json` configures the static `dist/` deployment; hosting and source publication are separate from IMD provenance, submission and Squeekchain approval.
+
+## Files
+
+- `src/wheel.js` — strict status normalization, heartbeat, observed-block tracker, isolated Practice clock.
+- `src/transport.js` — abortable public API polling and rate-limit backoff.
+- `src/engine.js` — physics, seeds, pouch, damage, banking, physical checkpoints.
+- `src/art.js` — all original code-drawn pixel artwork and scene rendering.
+- `src/game.js` — controls, responsive Canvas, sound, UI and lifecycle.
+- `src/storage.js` — defensive, mode-separated local records.
+- `tests/` — reproducible policy, mechanics, rendering and DOM tests.
+
+Copyright © 2026 0xyas. Original game code and artwork. No license to third-party Squeekchain marks is implied.

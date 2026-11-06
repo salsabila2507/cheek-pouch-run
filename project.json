@@ -1,0 +1,24 @@
+{
+  "name": "Cheek Pouch Run",
+  "author": "0xyas",
+  "description": "Original pixel forest runner with cheek-pouch risk, real-RPM speed and observed-block burrow checkpoints.",
+  "integration": {
+    "statusEndpoint": "https://api.squeekchain.com/v1/status",
+    "schemaVersion": 1,
+    "pollIntervalMs": 5000,
+    "network": "Ethereum Sepolia",
+    "blockSource": "builder.projected.blockHeight",
+    "blockFinality": "optimistic, not settled",
+    "walletRequired": false,
+    "rewards": "local non-monetary game points"
+  },
+  "verification": {
+    "status": "not-submitted",
+    "imdJob": null,
+    "imdSite": null,
+    "issuedPageTag": null,
+    "publicRepository": "https://github.com/salsabila2507/cheek-pouch-run",
+    "approval": null
+  },
+  "liveUrl": "https://cheek-pouch-run.vercel.app"
+}

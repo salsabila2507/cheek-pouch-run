@@ -1,0 +1,20 @@
+{
+  "name": "cheek-pouch-run",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "A wheel-powered forest runner. Real hamster, real stakes. Only pretend seeds.",
+  "scripts": {
+    "test": "node --test tests/*.test.js",
+    "start": "node tools/serve.js",
+    "check": "node --check src/game.js && node --check src/engine.js && node --check src/wheel.js && node --check src/art.js",
+    "build": "node tools/build.js"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "devDependencies": {
+    "@napi-rs/canvas": "0.1.80",
+    "linkedom": "0.18.12"
+  }
+}

@@ -1,0 +1,68 @@
+[
+  {
+    "path": "/",
+    "status": 200,
+    "bytes": 10758,
+    "type": "text/html; charset=utf-8"
+  },
+  {
+    "path": "/style.css",
+    "status": 200,
+    "bytes": 22346,
+    "type": "text/css; charset=utf-8"
+  },
+  {
+    "path": "/favicon.svg",
+    "status": 200,
+    "bytes": 477,
+    "type": "image/svg+xml"
+  },
+  {
+    "path": "/project.json",
+    "status": 200,
+    "bytes": 594,
+    "type": "application/json; charset=utf-8"
+  },
+  {
+    "path": "/robots.txt",
+    "status": 200,
+    "bytes": 23,
+    "type": "text/plain; charset=utf-8"
+  },
+  {
+    "path": "/src/game.js",
+    "status": 200,
+    "bytes": 14154,
+    "type": "text/javascript; charset=utf-8"
+  },
+  {
+    "path": "/src/engine.js",
+    "status": 200,
+    "bytes": 4332,
+    "type": "text/javascript; charset=utf-8"
+  },
+  {
+    "path": "/src/wheel.js",
+    "status": 200,
+    "bytes": 3490,
+    "type": "text/javascript; charset=utf-8"
+  },
+  {
+    "path": "/src/transport.js",
+    "status": 200,
+    "bytes": 1149,
+    "type": "text/javascript; charset=utf-8"
+  },
+  {
+    "path": "/src/art.js",
+    "status": 200,
+    "bytes": 8189,
+    "type": "text/javascript; charset=utf-8"
+  },
+  {
+    "path": "/src/storage.js",
+    "status": 200,
+    "bytes": 808,
+    "type": "text/javascript; charset=utf-8"
+  }
+]
