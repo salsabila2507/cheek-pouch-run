@@ -80,6 +80,16 @@
 .seal-wall a{color:#b37855;font-size:10px}
 .seal-empty{font:10px/1.5 var(--mono);color:#53644c;padding:8px 0}
 .seal-wall-note{font:8px/1.5 var(--mono);color:#53644c;margin:14px 0 0}
+
+.result-seal{margin:14px 0 6px;padding:12px;border:1px solid #d4dcc6;border-radius:8px;background:#eef1e4;text-align:left}
+.result-seal-kicker{font:8px var(--mono);letter-spacing:1.2px;color:#53644c;margin:0 0 6px}
+.result-seal-note{font-size:11px;line-height:1.55;color:#53644c;margin:0 0 10px}
+.result-seal-actions{display:grid;gap:8px}
+.seal-window{margin:0 0 12px;padding:10px 12px;border:1px dashed #b37855;border-radius:8px;background:#f7efe6}
+.seal-window p{margin:0 0 6px;font:10px/1.5 var(--mono);color:#6b4a36}
+.seal-window-link{font:10px var(--mono);color:#b37855}
+.seal-window-note{font:9px/1.5 var(--mono);color:#53644c;margin:0 0 14px;min-height:28px}
+
 @media(max-width:760px){
   .site-header nav a[href="#burrow-seal"]{display:none}
   .seal-grid{grid-template-columns:1fr;padding:18px}

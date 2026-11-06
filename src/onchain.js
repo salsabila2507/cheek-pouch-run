@@ -11,6 +11,25 @@ export const RPCS = [
   'https://rpc.sepolia.org',
 ];
 
+export const SEAL_WINDOW_MS = 60_000;
+export const SEAL_NEST_BOOST = 8;
+
+/** Nest soft-start only when sealing after a bank or inside a Live block window. */
+export function sealGrantsNestBoost({ mode = 'live', banked = 0, lastBlockAt = null, now = Date.now() } = {}) {
+  if (Number(banked) > 0) return true;
+  if (mode === 'live' && lastBlockAt != null && now - lastBlockAt <= SEAL_WINDOW_MS) return true;
+  return false;
+}
+
+export function sealWindowLabel({ mode = 'live', banked = 0, lastBlockAt = null, now = Date.now() } = {}) {
+  if (Number(banked) > 0) return 'Checkpoint open · banked seeds ready to seal';
+  if (mode === 'live' && lastBlockAt != null) {
+    const left = Math.max(0, SEAL_WINDOW_MS - (now - lastBlockAt));
+    if (left > 0) return `Live block window · ${Math.ceil(left / 1000)}s to seal for nest soft-start`;
+  }
+  return 'Seal anytime for the chain mark · nest soft-start needs a bank or Live block window';
+}
+
 const ZERO32 = '0'.repeat(64);
 
 export function shortAddr(addr) {
@@ -149,7 +168,9 @@ export function createBurrowSeal({
   ethereum = globalThis.ethereum,
   fetchImpl = globalThis.fetch,
   getSeedCount = () => 0,
+  getSealContext = () => ({ mode: 'live', banked: 0, lastBlockAt: null, now: Date.now() }),
   onNotice = () => {},
+  onSealed = () => {},
 } = {}) {
   const $ = (id) => document.getElementById(id);
   let address = null;
@@ -164,7 +185,11 @@ export function createBurrowSeal({
     const connected = Boolean(address);
     const connectBtn = $('seal-connect');
     const stampBtn = $('seal-stamp');
+    const resultStamp = $('result-seal-stamp');
+    const resultConnect = $('result-seal-connect');
     const addr = $('seal-address');
+    const ctx = getSealContext() || {};
+    const boostReady = sealGrantsNestBoost(ctx);
     if (connectBtn) {
       connectBtn.hidden = connected;
       connectBtn.disabled = busy;
@@ -172,6 +197,17 @@ export function createBurrowSeal({
     if (stampBtn) {
       stampBtn.hidden = !connected;
       stampBtn.disabled = busy || !connected;
+      stampBtn.textContent = boostReady
+        ? 'Seal checkpoint · nest soft-start ↗'
+        : 'Seal this burrow on Sepolia ↗';
+    }
+    if (resultConnect) {
+      resultConnect.hidden = connected;
+      resultConnect.disabled = busy;
+    }
+    if (resultStamp) {
+      resultStamp.hidden = !connected;
+      resultStamp.disabled = busy || !connected;
     }
     if (addr) {
       addr.hidden = !connected;
@@ -181,6 +217,14 @@ export function createBurrowSeal({
     const seeds = getSeedCount();
     const seedLabel = $('seal-seeds');
     if (seedLabel) seedLabel.textContent = String(seeds);
+    const windowNote = $('seal-window-note');
+    if (windowNote) windowNote.textContent = sealWindowLabel(ctx);
+    const resultNote = $('result-seal-note');
+    if (resultNote) {
+      resultNote.textContent = boostReady
+        ? 'Seal this checkpoint on Sepolia. Next Live run starts with nest soft-start.'
+        : 'Optional chain mark. Nest soft-start unlocks after a bank or Live block window.';
+    }
   }
 
   function renderWall(stamps) {
@@ -245,6 +289,7 @@ export function createBurrowSeal({
     setStatus('Confirm the approve in your wallet…');
     try {
       await ensureSepolia(ethereum);
+      const ctx = getSealContext() || {};
       const { txHash, txUrl } = await sendBurrowSeal(address, ethereum);
       const last = $('seal-last');
       if (last) {
@@ -252,8 +297,12 @@ export function createBurrowSeal({
         last.href = txUrl;
         last.textContent = `Last seal ${shortAddr(txHash)} ↗`;
       }
-      setStatus('Seal sent. Seeds stay local game points.');
-      onNotice('Burrow sealed on Sepolia.', 4);
+      const boost = sealGrantsNestBoost(ctx);
+      setStatus(boost
+        ? 'Checkpoint sealed. Next Live run gets nest soft-start. Seeds stay local.'
+        : 'Seal sent. Seeds stay local game points.');
+      onNotice(boost ? 'Checkpoint sealed · nest soft-start armed.' : 'Burrow sealed on Sepolia.', 4);
+      onSealed({ txHash, txUrl, address, boost, seeds: Number(ctx.banked) || getSeedCount() || 0, context: ctx });
       void refreshWall();
     } catch (error) {
       const msg = error?.code === 4001 ? 'Seal cancelled.' : (error?.message || 'Seal failed.');
@@ -268,6 +317,8 @@ export function createBurrowSeal({
   function bind() {
     $('seal-connect')?.addEventListener('click', () => void connect());
     $('seal-stamp')?.addEventListener('click', () => void stamp());
+    $('result-seal-connect')?.addEventListener('click', () => void connect());
+    $('result-seal-stamp')?.addEventListener('click', () => void stamp());
     ethereum?.on?.('accountsChanged', (accounts) => {
       address = accounts?.[0] || null;
       paintWallet();
@@ -280,5 +331,5 @@ export function createBurrowSeal({
     void refreshWall();
   }
 
-  return { bind, paintWallet, refreshWall, get address() { return address; } };
+  return { bind, paintWallet, refreshWall, stamp, connect, get address() { return address; } };
 }

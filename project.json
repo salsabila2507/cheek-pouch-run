@@ -1,7 +1,7 @@
 {
   "name": "Cheek Pouch Run",
   "author": "0xyas",
-  "description": "Original real-wheel forest runner on squeekrun.site. Heavy cheek-pouch risk, block burrow banking, ZOOMIES, playable sleep survival, optional Sepolia burrow seal. Live never simulates RPM.",
+  "description": "Original real-wheel forest runner on squeekrun.site. Heavy cheek-pouch risk, block burrow banking, ZOOMIES, playable sleep survival, optional Sepolia burrow checkpoint. Live never simulates RPM.",
   "integration": {
     "statusEndpoint": "https://api.squeekchain.com/v1/status",
     "schemaVersion": 1,
@@ -15,7 +15,7 @@
       "network": "Ethereum Sepolia",
       "action": "SQK approve(self, 0)",
       "token": "0x5501e1fa81be1c3f49225fa7668da0245d07db60",
-      "purpose": "Optional public burrow seal. Gas only. Seeds stay local."
+      "purpose": "Optional burrow checkpoint after bank or Live block window. Arms local nest soft-start. Gas only. Seeds stay local."
     }
   },
   "verification": {

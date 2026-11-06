@@ -9,3 +9,23 @@ export function saveRecord(mode,run,store=globalThis.localStorage){
   try{store.setItem(key(mode),JSON.stringify(next));}catch{/* Private browsing still works; records are optional. */}
   return next;
 }
+
+const sealKey='cheek-pouch-run:v1:seal-boost';
+export function readSealBoost(store=globalThis.localStorage){
+  try{
+    const r=JSON.parse(store?.getItem?.(sealKey)||'null');
+    if(!r?.ready)return {ready:false,seeds:0,tx:''};
+    return {ready:true,seeds:clean(r.seeds),tx:String(r.tx||'')};
+  }catch{return {ready:false,seeds:0,tx:''};}
+}
+export function grantSealBoost(store=globalThis.localStorage,{seeds=0,tx=''}={}){
+  const next={ready:true,seeds:clean(seeds),tx:String(tx||''),at:Date.now()};
+  try{store?.setItem?.(sealKey,JSON.stringify(next));}catch{/* optional */}
+  return next;
+}
+export function consumeSealBoost(store=globalThis.localStorage){
+  const prior=readSealBoost(store);
+  if(!prior.ready)return null;
+  try{store?.removeItem?.(sealKey);}catch{/* optional */}
+  return prior;
+}

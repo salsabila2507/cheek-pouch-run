@@ -6,6 +6,10 @@ import {
   stampFromLog,
   shortAddr,
   SQK_TOKEN,
+  sealGrantsNestBoost,
+  sealWindowLabel,
+  SEAL_WINDOW_MS,
+  SEAL_NEST_BOOST,
 } from '../src/onchain.js';
 
 test('encodeApproveSelf pads address and zero amount', () => {
@@ -44,4 +48,15 @@ test('self-zero approval filter', () => {
 test('shortAddr and token constant', () => {
   assert.equal(shortAddr('0x5501e1fa81be1c3f49225fa7668da0245d07db60'), '0x5501…db60');
   assert.match(SQK_TOKEN, /^0x[0-9a-f]{40}$/);
+});
+
+test('nest boost only after bank or live block window', () => {
+  const now = 1_000_000;
+  assert.equal(sealGrantsNestBoost({ mode: 'live', banked: 12, now }), true);
+  assert.equal(sealGrantsNestBoost({ mode: 'practice', banked: 12, now }), true);
+  assert.equal(sealGrantsNestBoost({ mode: 'live', banked: 0, lastBlockAt: now - 1000, now }), true);
+  assert.equal(sealGrantsNestBoost({ mode: 'live', banked: 0, lastBlockAt: now - SEAL_WINDOW_MS - 1, now }), false);
+  assert.equal(sealGrantsNestBoost({ mode: 'practice', banked: 0, lastBlockAt: now, now }), false);
+  assert.equal(SEAL_NEST_BOOST, 8);
+  assert.match(sealWindowLabel({ mode: 'live', banked: 5, now }), /banked/i);
 });

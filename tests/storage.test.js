@@ -1,6 +1,6 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {readRecord,saveRecord} from '../src/storage.js';
+import {readRecord,saveRecord,grantSealBoost,consumeSealBoost,readSealBoost} from '../src/storage.js';
 const memory=()=>{const data=new Map();return {getItem:k=>data.get(k)??null,setItem:(k,v)=>data.set(k,v)}};
 test('Live and Practice records are separate, best banked score cannot fall',()=>{
  const store=memory();saveRecord('practice',{banked:80,distance:200},store);assert.equal(readRecord('live',store)?.best,0);assert.equal(readRecord('practice',store)?.best,80);saveRecord('practice',{banked:5,distance:5},store);assert.equal(readRecord('practice',store)?.best,80);assert.equal(readRecord('practice',store)?.runs,2);
@@ -19,4 +19,20 @@ test('night survival and goals persist separately without creating seed scores',
 test('old records migrate with zero night/goal bests and invalid values are rejected',()=>{
  assert.equal(readRecord('live',{getItem:()=>'{"best":5}'}).sleep,0);
  const r=readRecord('live',{getItem:()=>'{"sleep":-3,"goals":"900"}'});assert.equal(r.sleep,0);assert.equal(r.goals,0);
+});
+
+test('seal boost arms and consumes once',()=>{
+ const store=memory();
+ store.removeItem=k=>store.setItem(k,null)||undefined;
+ // patch memory helper with removeItem
+ const data=new Map();
+ const mem={getItem:k=>data.has(k)?data.get(k):null,setItem:(k,v)=>data.set(k,v),removeItem:k=>data.delete(k)};
+ assert.equal(readSealBoost(mem).ready,false);
+ grantSealBoost(mem,{seeds:24,tx:'0xabc'});
+ assert.equal(readSealBoost(mem).ready,true);
+ assert.equal(readSealBoost(mem).seeds,24);
+ const used=consumeSealBoost(mem);
+ assert.equal(used.seeds,24);
+ assert.equal(readSealBoost(mem).ready,false);
+ assert.equal(consumeSealBoost(mem),null);
 });

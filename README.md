@@ -18,11 +18,11 @@ npm start
 # http://127.0.0.1:4179
 ```
 
-The shipped game is plain HTML/CSS/ES modules/Canvas with **zero runtime packages**, no private keys and no backend. Play works without a wallet. An optional **burrow seal** can connect an injected wallet on Ethereum Sepolia and send SQK `approve(self, 0)` (gas only). `@napi-rs/canvas` and `linkedom` are development-only test tools. Serve `dist/` on a static host; opening `index.html` as `file://` is not supported.
+The shipped game is plain HTML/CSS/ES modules/Canvas with **zero runtime packages**, no private keys and no backend. Play works without a wallet. An optional **burrow checkpoint** can connect an injected wallet on Ethereum Sepolia and send SQK `approve(self, 0)` (gas only), arming a local nest soft-start after a bank or Live block window. `@napi-rs/canvas` and `linkedom` are development-only test tools. Serve `dist/` on a static host; opening `index.html` as `file://` is not supported.
 
-## Burrow seal (optional, Sepolia)
+## Burrow checkpoint (optional, Sepolia)
 
-Connect a wallet, switch to Ethereum Sepolia, and seal your burrow with one SQK `approve` to yourself for amount `0`. No SQK moves. Seeds stay local game points. Recent self-zero approvals show on the site wall (a shared public signal used by other fan apps too). Token: [`0x5501…db60`](https://sepolia.etherscan.io/token/0x5501e1fa81be1c3f49225fa7668da0245d07db60).
+After you bank seeds, or within 60 seconds of a Live wheel block, connect a wallet on Ethereum Sepolia and seal the burrow with one SQK `approve` to yourself for amount `0`. That arms a local nest soft-start on your next Live run (night owls ease a little). No SQK moves. Seeds stay local game points. You can still seal anytime for the public chain mark; the nest boost only arms inside those checkpoints. Recent self-zero approvals show on the site wall. Token: [`0x5501…db60`](https://sepolia.etherscan.io/token/0x5501e1fa81be1c3f49225fa7668da0245d07db60).
 
 ## Controls
 

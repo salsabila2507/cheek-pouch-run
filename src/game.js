@@ -1,9 +1,9 @@
 import {WheelTracker,practiceWheel} from './wheel.js';
 import {createStatusPoller} from './transport.js';
-import {createRun,stepRun,checkpoint,CAPACITY,loadFor,objectiveFor} from './engine.js';
+import {createRun,stepRun,checkpoint,CAPACITY,loadFor,objectiveFor,stockNest} from './engine.js';
 import {drawScene} from './art.js';
-import {readRecord,saveRecord} from './storage.js';
-import {createBurrowSeal} from './onchain.js';
+import {readRecord,saveRecord,grantSealBoost,consumeSealBoost,readSealBoost} from './storage.js';
+import {createBurrowSeal,SEAL_NEST_BOOST,sealGrantsNestBoost,sealWindowLabel} from './onchain.js';
 
 export function bootGame({document=globalThis.document,window=globalThis.window,clock=()=>Date.now(),storage,fetchImpl=globalThis.fetch,autoPoll=true,autoFrame=true}={}){
  if(storage===undefined){try{storage=window.localStorage;}catch{storage=null;}}
@@ -11,7 +11,7 @@ export function bootGame({document=globalThis.document,window=globalThis.window,
  if(!ctx){$('live-note').textContent='Canvas 2D is unavailable in this browser.';return null;}
  const tracker=new WheelTracker(),reducedMotion=window.matchMedia?.('(prefers-reduced-motion: reduce)').matches||false;
  const input={jump:false,duck:false,home:false};let run=null,paused=false,saved=false,lastPracticeHeight='1',animTime=0,toastUntil=0,width=800,height=420,dpr=1,rafId=0,lastFrame=0,destroyed=false,curtainType='';
- let previousPhase=null,seal=null;
+ let previousPhase=null,seal=null,lastBlockAt=null,pendingBanked=0;
  let sound=false,audio=null,lastSeedSound=0;const removers=[];
  function on(target,type,fn,opts){target.addEventListener(type,fn,opts);removers.push(()=>target.removeEventListener(type,fn,opts));}
  function text(id,value){const node=$(id),string=String(value);if(node.textContent!==string)node.textContent=string;}
@@ -43,7 +43,7 @@ export function bootGame({document=globalThis.document,window=globalThis.window,
    return w;
  }
  function setCurtain(kind,w){
-   curtainType=kind;show('curtain',!!kind);show('result-stats',kind==='result');show('retry',kind==='result');show('resume',kind==='pause');show('offline-practice',kind==='offline');
+   curtainType=kind;show('curtain',!!kind);show('result-stats',kind==='result');show('retry',kind==='result');show('resume',kind==='pause');show('offline-practice',kind==='offline');if(kind!=='result'){const sealBox=$('result-seal');if(sealBox)sealBox.hidden=true;}
    if(kind==='offline'){
      text('curtain-kicker','LIVE · OFFLINE WAITING ROOM');text('curtain-title','Waiting for a signal.');text('curtain-copy',`${w?.reason||'Wheel data unavailable'}. Still checking the real API. Your pouch and trail are frozen; no simulated RPM or score. Practice is separate.`);text('back','End run (unbanked seeds lost)');
    }else if(kind==='pause'){
@@ -51,20 +51,29 @@ export function bootGame({document=globalThis.document,window=globalThis.window,
    }else if(kind==='result'){
      text('curtain-kicker',run.mode==='practice'?'PRACTICE · SEPARATE LOCAL RECORD':'LIVE · LOCAL RECORD');text('curtain-title',run.status==='home'?'Home, sweet burrow.':'The forest got you.');text('curtain-copy',run.status==='home'?"Good instincts. Your cheeks made it home.":'Three scrapes. One lesson. Banked seeds are safe; the rest stayed in the forest.');text('result-seeds',run.banked);text('result-distance',Math.floor(run.distance));text('result-missions',run.missions.completed);text('result-banks',run.bankCount);text('result-sleep',Math.floor(run.missions.sleepSeconds));
      const extra=$('result-extra');if(extra&&run.recoverCount)extra.textContent=`${run.bankCount} BANKS · ${run.missions.completed} GOALS · ${Math.floor(run.missions.sleepSeconds)}s NIGHT · ${run.recoverCount} HEALS`;
+     pendingBanked=run.banked||0;
+     const sealBox=$('result-seal');
+     if(sealBox){sealBox.hidden=!(run.banked>0);seal?.paintWallet?.();}
      text('back','Back to the burrow');
+   }else{
+     const sealBox=$('result-seal');if(sealBox)sealBox.hidden=true;
    }
  }
  function start(mode){
    if(!['practice','live'].includes(mode))return false;
-   run=createRun(mode,width);paused=false;saved=false;lastPracticeHeight='1';Object.assign(input,{jump:false,duck:false,home:false});curtainType='';toastUntil=0;previousPhase=null;
-   show('lobby-caption',false);show('lobby-panel',false);show('run-panel',true);show('run-hud',true);show('mission-strip',true);show('bank-feedback',false);show('touch-controls',true);show('pause',true);show('curtain',false);show('toast',false);
+   run=createRun(mode,width);paused=false;saved=false;lastPracticeHeight='1';Object.assign(input,{jump:false,duck:false,home:false});curtainType='';toastUntil=0;previousPhase=null;pendingBanked=0;
+   show('lobby-caption',false);show('lobby-panel',false);show('run-panel',true);show('run-hud',true);show('mission-strip',true);show('bank-feedback',false);show('touch-controls',true);show('pause',true);show('curtain',false);show('toast',false);show('seal-window',false);
    text('mode-chip',mode==='practice'?'PRACTICE · SIMULATED':'LIVE · REAL WHEEL');text('active-label',mode==='practice'?'PRACTICE · SIMULATED WHEEL':'LIVE · REAL WHEEL');text('pause','Ⅱ');$('pause').setAttribute('aria-label','Pause game');
-   resize();stage.focus?.({preventScroll:true});if(window.innerWidth<=760)stage.scrollIntoView?.({block:'start',behavior:reducedMotion?'auto':'smooth'});effect('jump');notice('Tap twice to double jump. Hold ↓ to duck.',3.8);return true;
+   if(mode==='live'){
+     const boost=consumeSealBoost(storage);
+     if(boost){stockNest(run,SEAL_NEST_BOOST);notice('Sealed burrow soft-start · nest ready for night.',3.6);effect('nest');}
+   }
+   resize();stage.focus?.({preventScroll:true});if(window.innerWidth<=760)stage.scrollIntoView?.({block:'start',behavior:reducedMotion?'auto':'smooth'});effect('jump');notice('Tap twice to double jump. Hold ↓ to duck.',3.8);seal?.paintWallet?.();return true;
  }
- function finish(){if(saved||!run||run.status==='running')return;saved=true;saveRecord(run.mode,run,storage);records();show('touch-controls',false);show('pause',false);setCurtain('result');effect(run.status==='home'?'home':'hit');$('retry').disabled=false;text('retry','One more run ↗');$('retry').focus?.({preventScroll:true});}
+ function finish(){if(saved||!run||run.status==='running')return;saved=true;pendingBanked=run.banked||0;saveRecord(run.mode,run,storage);records();show('touch-controls',false);show('pause',false);show('seal-window',false);setCurtain('result');effect(run.status==='home'?'home':'hit');$('retry').disabled=false;text('retry','One more run ↗');$('retry').focus?.({preventScroll:true});seal?.paintWallet?.();}
  function lobby(){
    if(run&&!saved){run.pouch=0;run.status='over';saveRecord(run.mode,run,storage);records();}
-   run=null;paused=false;Object.assign(input,{jump:false,duck:false,home:false});show('curtain',false);show('run-panel',false);show('run-hud',false);show('mission-strip',false);show('bank-feedback',false);stage.setAttribute('data-zoomies','false');show('touch-controls',false);show('pause',false);show('toast',false);show('lobby-caption',true);show('lobby-panel',true);text('mode-chip','READY WHEN YOU ARE');resize();$('start-practice').focus?.({preventScroll:true});
+   run=null;paused=false;Object.assign(input,{jump:false,duck:false,home:false});show('curtain',false);show('run-panel',false);show('run-hud',false);show('mission-strip',false);show('bank-feedback',false);show('seal-window',false);stage.setAttribute('data-zoomies','false');show('touch-controls',false);show('pause',false);show('toast',false);show('lobby-caption',true);show('lobby-panel',true);text('mode-chip','READY WHEN YOU ARE');resize();$('start-practice').focus?.({preventScroll:true});
  }
  function togglePause(force){
    if(!run||run.status!=='running')return;paused=force??!paused;input.jump=false;input.duck=false;
@@ -72,7 +81,7 @@ export function bootGame({document=globalThis.document,window=globalThis.window,
  }
  function receive(raw){
    const w=tracker.ingest(raw,clock());
-   if(w.checkpoint&&run?.mode==='live'&&run.status==='running'&&!paused){checkpoint(run,w.checkpoint);notice(`WHEEL BLOCK #${w.checkpoint} · Golden seeds + bank ahead`,4);effect('checkpoint');}
+   if(w.checkpoint&&run?.mode==='live'&&run.status==='running'&&!paused){checkpoint(run,w.checkpoint);lastBlockAt=clock();notice(`WHEEL BLOCK #${w.checkpoint} · Golden seeds + bank ahead · seal window open`,4);effect('checkpoint');seal?.paintWallet?.();}
    telemetry();
  }
  const poller=createStatusPoller({fetchImpl,onSnapshot:receive,onFailure:reason=>{tracker.fail(reason);telemetry();}});
@@ -96,6 +105,11 @@ export function bootGame({document=globalThis.document,window=globalThis.window,
    const zooming=w.phase==='running'&&w.rpm>=70;show('zoomies',zooming);stage.setAttribute('data-zoomies',String(zooming));
    text('mode-chip',run.mode==='practice'?'PRACTICE · SIMULATED':w.phase==='sleeping'?'LIVE · SLEEP SURVIVAL':w.phase==='unknown'?'LIVE · WAITING':'LIVE · REAL WHEEL');$('home').disabled=w.phase==='unknown'||run.status!=='running';text('home',w.phase==='sleeping'?'Retreat & save your pouch ↗':'Go home & bank ↗');
    text('trail-tip',w.phase==='unknown'?'No signal, no movement, no score. Your existing pouch stays untouched.':w.phase==='sleeping'?"Night rules: slower trail, more owls and mushrooms. Survive for local goals or retreat with your pouch. No new seeds or run metres.":'Seeds in your cheeks are at risk. Head home to bank, or land at the next block’s burrow to keep running.');
+   const ctx={mode:run.mode,banked:Math.max(pendingBanked,run.banked||0),lastBlockAt,now:clock()};
+   const open=sealGrantsNestBoost(ctx);
+   const strip=$('seal-window');
+   if(strip){strip.hidden=!(run.mode==='live'&&run.status==='running'&&open);if(!strip.hidden)text('seal-window-copy',sealWindowLabel(ctx));}
+   seal?.paintWallet?.();
  }
  function update(dt){
    dt=Math.min(.05,Math.max(0,dt));animTime+=dt;const live=telemetry();let w=currentWheel();
@@ -114,7 +128,7 @@ export function bootGame({document=globalThis.document,window=globalThis.window,
            if(event.kind==='zoomies')notice('ZOOMIES · 70+ RPM. Every seed is worth DOUBLE!',3);
            if(event.kind==='hit')notice('Ouch. Half your pouch spilled.',2);
            if(event.kind==='stumble')notice(`Stumbled! ${event.value} seeds spilled. Hold Duck to steady full cheeks.`,3);
-           if(event.kind==='bank')notice(`${event.value} seeds banked. Weight gone.${run.events.some(e=>e.kind==='mission')?' Goal complete!':''}`,3);
+           if(event.kind==='bank'){pendingBanked=run.banked||0;notice(`${event.value} seeds banked. Weight gone.${run.events.some(e=>e.kind==='mission')?' Goal complete!':''} Checkpoint ready to seal.`,3);seal?.paintWallet?.();}
            if(event.kind==='recover')notice(`Spent ${event.value} seeds · +1 life. Rest banked.`,3);
            if(event.kind==='nest')notice(`Nest +${event.value}. Sleep hazards will ease.`,2.4);
            if(event.kind==='nest-save')notice('Nest absorbed the hit. Keep ducking owls.',2.2);
@@ -153,8 +167,18 @@ export function bootGame({document=globalThis.document,window=globalThis.window,
  on(document,'visibilitychange',()=>{if(document.hidden){tracker.fail('Tab was inactive');if(run?.status==='running')togglePause(true);}});
  on(window,'resize',resize);const observer=window.ResizeObserver?new window.ResizeObserver(resize):null;observer?.observe(stage);
  function frame(at){if(destroyed)return;const dt=lastFrame?Math.min((at-lastFrame)/1000,.05):0;lastFrame=at;update(dt);rafId=window.requestAnimationFrame(frame);}
- seal=createBurrowSeal({document,ethereum:window.ethereum,fetchImpl,getSeedCount:()=>readRecord('live',storage).best,onNotice:(message,seconds=3)=>notice(message,seconds)});
+ seal=createBurrowSeal({
+   document,ethereum:window.ethereum,fetchImpl,
+   getSeedCount:()=>Math.max(pendingBanked,readRecord('live',storage).best),
+   getSealContext:()=>({mode:run?.mode||'live',banked:Math.max(pendingBanked,run?.banked||0),lastBlockAt,now:clock()}),
+   onNotice:(message,seconds=3)=>notice(message,seconds),
+   onSealed:({boost,seeds,txHash})=>{
+     if(boost){grantSealBoost(storage,{seeds,tx:txHash});notice('Nest soft-start armed for your next Live run.',4);}
+     seal?.paintWallet?.();
+   },
+ });
  seal.bind();
+ if(readSealBoost(storage).ready)text('source-summary','Public wheel telemetry · sealed nest soft-start armed');
  resize();records();telemetry();update(0);if(autoPoll)poller.start();if(autoFrame)rafId=window.requestAnimationFrame(frame);
  return {start,receive,update,tracker,seal,get run(){return run;},destroy(){destroyed=true;poller.stop();observer?.disconnect();window.cancelAnimationFrame?.(rafId);for(const remove of removers)remove();void audio?.close();}};
 }
