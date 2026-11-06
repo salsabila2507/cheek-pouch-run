@@ -1,5 +1,7 @@
 # Cheek Pouch Run
 
+squeekchain-project: 099e6481-92a0-4eb5-af7c-29c2b0d3b42d
+
 **His wheel. Your wild run.** An original mobile-first forest runner by **0xyas**, powered by Squeektoshi’s hardware telemetry on Squeekchain. Independent project by **0xyas** on GitHub `salsabila2507`. Original code and assets.
 
 Jump mushrooms, duck owls, double-jump for seed arcs, and decide whether your cheeks can survive another stretch. The 40-seed pouch visibly grows: heavy cheeks slow the trail by up to 25% and lower jumps by up to 16%. At 36+ seeds, a visible three-second pressure meter builds toward a stumble that spills a quarter of your pouch, without taking a life. Hold Duck on the ground to steady it, or bank to reset the weight and pressure. Three hits end the run; each hit spills half your unbanked seeds. Heading home banks the existing pouch and ends your run. A newly observed wheel block creates golden seeds and a physical burrow: land to bank, or Duck+land to spend 10 seeds for +1 life then bank the rest. Day play stocks a Nest meter (seed combos and burrow banks); during real sleep that nest softens owl pressure and can absorb a hit. Gold trails, a boost announcement and a double-seed HUD mark 70+ RPM ZOOMIES. Banking has a persistent safe-seed confirmation.
