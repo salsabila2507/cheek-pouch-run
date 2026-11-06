@@ -2,7 +2,9 @@
 
 **His wheel. Your wild run.** An original mobile-first forest runner by **0xyas**, powered by Squeektoshi’s hardware telemetry on Squeekchain. Independent project by **0xyas** on GitHub `salsabila2507`. Original code and assets.
 
-Jump mushrooms, duck owls, double-jump for seed arcs, and decide whether your cheeks can survive another stretch. The 40-seed pouch visibly grows and gets a little heavier. Three hits end the run; each hit spills half your unbanked seeds. Heading home banks the existing pouch and ends your run. A newly observed wheel block creates golden seeds and a physical burrow: land at it to bank and keep running.
+Jump mushrooms, duck owls, double-jump for seed arcs, and decide whether your cheeks can survive another stretch. The 40-seed pouch visibly grows: heavy cheeks slow the trail by up to 25% and lower jumps by up to 16%. At 36+ seeds, a visible three-second pressure meter builds toward a stumble that spills a quarter of your pouch, without taking a life. Hold Duck on the ground to steady it, or bank to reset the weight and pressure. Three hits end the run; each hit spills half your unbanked seeds. Heading home banks the existing pouch and ends your run. A newly observed wheel block creates golden seeds and a physical burrow: land inside its marked approach to bank and keep running. Gold trails, a boost announcement and a double-seed HUD mark 70+ RPM ZOOMIES. Banking has a persistent safe-seed confirmation.
+
+Local objectives alternate between banking targets (12, 24, 36… total seeds) and surviving 12-second stretches of genuine sleep. Objectives never mint points or tokens. Sleep survival has its own local personal best, so Live remains a playable night challenge even at 0 RPM. Result cards show banked seeds, run metres, successful banks, completed goals and sleep-survival seconds.
 
 ## Run locally
 
@@ -33,22 +35,25 @@ Source: [`GET https://api.squeekchain.com/v1/status`](https://api.squeekchain.co
 
 | Official signal | Gameplay consequence |
 | --- | --- |
-| Fresh, hardware-provenance, healthy schema v1; `coreStatus=ACTIVE` and positive `rpmMilli` | Live scoring and seed collection open |
-| `measurement.rpmMilli / 1000` | Runner speed = `min(395, 140 + 2.8 × RPM)` game pixels/second |
-| RPM ≥ 70 | ZOOMIES: twice the value per seed pickup; faster physical obstacles |
-| `IDLE` or zero RPM | Sleeping: new seeds and scored distance stop, trap cadence rises, existing pouch may be banked by retreating |
+| Fresh, hardware-provenance, healthy schema v1; `coreStatus=ACTIVE` and positive `rpmMilli` | Live awake rules: scored run metres and seed collection open |
+| `measurement.rpmMilli / 1000` | Base awake speed = `min(395, 140 + 2.8 × RPM)` game pixels/second, reduced by pouch weight and briefly after stumbling |
+| RPM ≥ 70 | ZOOMIES: twice the value per seed pickup, announced once on entry, gold scarf wake and HUD |
+| `IDLE` or zero RPM | Live remains open: night survival at a base 175 game px/s, more frequent traps and owls, local survival goals/best; new seeds and run metres stop; existing pouch may be banked |
 | A forward `builder.projected.blockHeight` during continuous fresh observation | Exactly **one** golden-seed burst and burrow checkpoint for that poll, even if height advanced by many |
-| Missing, malformed, stale, nonhardware, unhealthy or unknown status / transport failure | Entire Live run freezes, including physics, distance, traps and scoring |
+| Missing, malformed, stale, nonhardware, unhealthy or unknown status / transport failure | Live waiting room explains the failure while real API polling continues. Physics, distance, traps, objectives and seed scoring freeze. Practice is offered separately |
 
 Numbers carrying block heights remain decimal strings and are compared as `BigInt`. `builder.anchor.blockHeight` is shown separately as the **settled** height. **Projected blocks are optimistic accepted work, not finalized Ethereum transactions or issued SQK.**
 
 The first sample is a baseline, not a reward. Reconnects, epoch/installation changes and expired heartbeat rebaseline without catch-up. Duplicate/rollback heights cannot repeat checkpoints. Blocks seen in the lobby or while paused grant nothing later. Source timestamps must be within their advertised freshness budget (capped at 120s) and cannot be >10s in the future; the transport heartbeat independently expires after 12s. Polling means changes are observed with sampling delay, not instantaneously.
 
-**Practice is explicitly simulated** using a separate deterministic training clock. Its records use a different browser-storage key from Live. Practice does not rescue an unavailable Live run and never enters Live scores. Live cannot accidentally accept a simulated wheel at the engine boundary.
+**No disabled Live gate:** genuine IDLE/zero-RPM telemetry opens night survival, not an offline simulation. Unknown or failed telemetry opens a non-scoring waiting room and automatically resumes only when validated real data returns.
+
+**Practice is explicitly simulated** using a separate deterministic training clock. Its banked-seed, run-distance, sleep-survival and goal records use a different browser-storage key from Live. Existing records migrate with zero for new fields. Practice does not rescue an unavailable Live run and never enters Live scores. Live cannot accidentally accept a simulated wheel at the engine boundary.
 
 ## Why this is a game, not an API panel
 
 - An original, fully playable double-jump/duck platform runner with collisions, seed arcs, hit spill, invulnerability and an extraction decision.
+- Cheek weight, a visible stumble deadline and hold-to-steady ducking make collection a risk/recovery decision, not just a counter. Banking sheds weight immediately.
 - Real RPM changes moment-to-moment collision timing. Sleep changes both available actions and hazard pressure. Observed wheel blocks spawn physical encounters rather than just changing a label.
 - Custom code-drawn pixel hamster with growing cheeks and mint scarf, layered forest, burrow, mushrooms, owls and particle effects; no sprite pack, copied game, template or generated art asset.
 - Not a treasury cash-out game, prediction market, NFT naming tool, tower/raid, DeFi vault, alert bot or dashboard. See the [board comparison](docs/BOARD-COMPARISON.md) for scope and limits of the comparison.
@@ -59,7 +64,7 @@ Seeds are **local game points, not SQK, an airdrop, money, mining rewards or an 
 
 This is an independent fan project. It is **not approved, verified, affiliated with Squeekchain, or built by IMD yet**. The Code lane’s automatic and team reviews decide approval; nobody can honestly guarantee “100% accepted” or uniqueness against unseen/unpublished projects.
 
-Current status: **publicly hosted, not IMD-built and not submitted**. Public hosting does not imply Squeekchain verification or team approval.
+Project status: **publicly hosted, not IMD-built and not submitted**. A local build or commit is not evidence that the latest changes have reached production; verify the deployed build before claiming a release. Public hosting does not imply Squeekchain verification or team approval.
 
 - Source: [salsabila2507/cheek-pouch-run](https://github.com/salsabila2507/cheek-pouch-run)
 - Live game: [cheek-pouch-run.vercel.app](https://cheek-pouch-run.vercel.app)

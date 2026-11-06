@@ -3,11 +3,11 @@
   "version": "1.0.0",
   "private": true,
   "type": "module",
-  "description": "A wheel-powered forest runner. Real hamster, real stakes. Only pretend seeds.",
+  "description": "Real-wheel forest runner with cheek-pouch risk, block burrow banks, ZOOMIES and sleep-survival missions.",
   "scripts": {
     "test": "node --test tests/*.test.js",
     "start": "node tools/serve.js",
-    "check": "node --check src/game.js && node --check src/engine.js && node --check src/wheel.js && node --check src/art.js",
+    "check": "node --check src/game.js && node --check src/engine.js && node --check src/wheel.js && node --check src/art.js && node --check src/storage.js && node --check src/transport.js",
     "build": "node tools/build.js"
   },
   "engines": {

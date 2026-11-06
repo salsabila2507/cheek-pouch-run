@@ -1,6 +1,6 @@
 import {WheelTracker,practiceWheel} from './wheel.js';
 import {createStatusPoller} from './transport.js';
-import {createRun,stepRun,checkpoint,CAPACITY} from './engine.js';
+import {createRun,stepRun,checkpoint,CAPACITY,loadFor,objectiveFor} from './engine.js';
 import {drawScene} from './art.js';
 import {readRecord,saveRecord} from './storage.js';
 
@@ -10,6 +10,7 @@ export function bootGame({document=globalThis.document,window=globalThis.window,
  if(!ctx){$('live-note').textContent='Canvas 2D is unavailable in this browser.';return null;}
  const tracker=new WheelTracker(),reducedMotion=window.matchMedia?.('(prefers-reduced-motion: reduce)').matches||false;
  const input={jump:false,duck:false,home:false};let run=null,paused=false,saved=false,lastPracticeHeight='1',animTime=0,toastUntil=0,width=800,height=420,dpr=1,rafId=0,lastFrame=0,destroyed=false,curtainType='';
+ let previousPhase=null;
  let sound=false,audio=null,lastSeedSound=0;const removers=[];
  function on(target,type,fn,opts){target.addEventListener(type,fn,opts);removers.push(()=>target.removeEventListener(type,fn,opts));}
  function text(id,value){const node=$(id),string=String(value);if(node.textContent!==string)node.textContent=string;}
@@ -20,7 +21,7 @@ export function bootGame({document=globalThis.document,window=globalThis.window,
      const Audio=window.AudioContext||window.webkitAudioContext;if(!Audio)return;
      audio??=new Audio();if(audio.state==='suspended')void audio.resume();
      if(kind==='seed'&&animTime-lastSeedSound<.07)return;if(kind==='seed')lastSeedSound=animTime;
-     const note={jump:[330,510,.09],seed:[740,1040,.065],hit:[160,60,.2],bank:[520,920,.22],checkpoint:[440,880,.25],home:[440,660,.2]}[kind];if(!note)return;
+     const note={jump:[330,510,.09],seed:[740,1040,.065],hit:[160,60,.2],bank:[520,920,.22],checkpoint:[440,880,.25],zoomies:[600,1200,.3],mission:[660,990,.2],stumble:[220,120,.15],home:[440,660,.2]}[kind];if(!note)return;
      const osc=audio.createOscillator(),gain=audio.createGain(),at=audio.currentTime;
      osc.type=kind==='hit'?'sawtooth':'square';osc.frequency.setValueAtTime(note[0],at);osc.frequency.exponentialRampToValueAtTime(note[1],at+note[2]);gain.gain.setValueAtTime(.018,at);gain.gain.exponentialRampToValueAtTime(.0001,at+note[2]);osc.connect(gain);gain.connect(audio.destination);osc.start(at);osc.stop(at+note[2]);
    }catch{/* Sound never blocks play. */}
@@ -30,38 +31,37 @@ export function bootGame({document=globalThis.document,window=globalThis.window,
    canvas.width=Math.round(width*dpr);canvas.height=Math.round(height*dpr);ctx.setTransform(dpr,0,0,dpr,0,0);
    if(run&&old!==width){const factor=width/old;run.width=width;run.x=Math.max(85,width*.2);for(const e of run.entities)e.x*=factor;}
  }
- function records(){text('best-live',readRecord('live',storage).best);text('best-practice',readRecord('practice',storage).best);}
+ function records(){text('best-live',readRecord('live',storage).best);text('best-practice',readRecord('practice',storage).best);text('best-live-sleep',readRecord('live',storage).sleep);text('best-practice-sleep',readRecord('practice',storage).sleep);}
  function notice(message,seconds=3){text('toast',message);toastUntil=animTime+seconds;show('toast',true);}
  function telemetry(){
    const w=tracker.current(clock());$('connection-dot').className=`status-dot ${w.phase}`;text('rpm',w.rpm===null?'—':w.rpm.toFixed(1));text('block',w.height||'—');$('block').title=w.height?`Projected (not settled): ${w.height}`:'Unknown';
    text('wheel-state',w.phase==='running'?'ON THE WHEEL':w.phase==='sleeping'?'NAPPING':'NO SIGNAL');
-   text('live-note',w.phase==='running'?(w.rpm>=70?'He has the zoomies. Good luck, little legs.':'The real wheel is turning. Your trail is open.'):w.phase==='sleeping'?"He's napping. Live scoring rests with him.":'No fresh hardware signal. Live stays closed.');
-   $('start-live').disabled=w.phase!=='running';text('start-live',w.phase==='running'?'Run with Squeektoshi ↗':w.phase==='sleeping'?'Wheel asleep · try Practice':'Waiting for real wheel…');
-   text('source-summary',w.phase==='unknown'?'Live unavailable · Practice is simulated':`Hardware telemetry · settled #${w.settledHeight}`);
+   text('live-note',w.phase==='running'?(w.rpm>=70?'He has the zoomies. Good luck, little legs.':'The real wheel is turning. Your trail is open.'):w.phase==='sleeping'?"He's napping. Live is open: survive the night. No new seeds or run metres.":`${w.reason}. Enter Live to wait, or play the separate Practice simulation.`);
+   $('start-live').disabled=false;text('start-live',w.phase==='running'?'Run with Squeektoshi ↗':w.phase==='sleeping'?'Survive the sleep phase ↗':'Enter Live waiting room ↗');
+   text('source-summary',w.phase==='unknown'?'Live waiting · no signal · Practice is simulated':`Hardware telemetry · settled #${w.settledHeight}`);
    return w;
  }
  function setCurtain(kind,w){
-   curtainType=kind;show('curtain',!!kind);show('result-stats',kind==='result');show('retry',kind==='result');show('resume',kind==='pause');
+   curtainType=kind;show('curtain',!!kind);show('result-stats',kind==='result');show('retry',kind==='result');show('resume',kind==='pause');show('offline-practice',kind==='offline');
    if(kind==='offline'){
-     text('curtain-kicker','LIVE · RUN FROZEN');text('curtain-title','Waiting for a signal.');text('curtain-copy',`${w?.reason||'Wheel data unavailable'}. Your pouch and the trail are frozen. No pretend running.`);text('back','End run (unbanked seeds lost)');
+     text('curtain-kicker','LIVE · OFFLINE WAITING ROOM');text('curtain-title','Waiting for a signal.');text('curtain-copy',`${w?.reason||'Wheel data unavailable'}. Still checking the real API. Your pouch and trail are frozen; no simulated RPM or score. Practice is separate.`);text('back','End run (unbanked seeds lost)');
    }else if(kind==='pause'){
      text('curtain-kicker',run?.mode==='practice'?'PRACTICE · SIMULATED':'LIVE · REAL WHEEL');text('curtain-title','Paws on pause.');text('curtain-copy','Your pouch is safe. Blocks seen while paused do not grant catch-up checkpoints.');text('back','End run (unbanked seeds lost)');
    }else if(kind==='result'){
-     text('curtain-kicker',run.mode==='practice'?'PRACTICE · SEPARATE LOCAL RECORD':'LIVE · LOCAL RECORD');text('curtain-title',run.status==='home'?'Home, sweet burrow.':'The forest got you.');text('curtain-copy',run.status==='home'?"Good instincts. Your cheeks made it home.":'Three scrapes. One lesson. Banked seeds are safe; the rest stayed in the forest.');text('result-seeds',run.banked);text('result-distance',Math.floor(run.distance));text('back','Back to the burrow');
+     text('curtain-kicker',run.mode==='practice'?'PRACTICE · SEPARATE LOCAL RECORD':'LIVE · LOCAL RECORD');text('curtain-title',run.status==='home'?'Home, sweet burrow.':'The forest got you.');text('curtain-copy',run.status==='home'?"Good instincts. Your cheeks made it home.":'Three scrapes. One lesson. Banked seeds are safe; the rest stayed in the forest.');text('result-seeds',run.banked);text('result-distance',Math.floor(run.distance));text('result-missions',run.missions.completed);text('result-banks',run.bankCount);text('result-sleep',Math.floor(run.missions.sleepSeconds));text('back','Back to the burrow');
    }
  }
  function start(mode){
    if(!['practice','live'].includes(mode))return false;
-   if(mode==='live'&&tracker.current(clock()).phase!=='running')return false;
-   run=createRun(mode,width);paused=false;saved=false;lastPracticeHeight='1';Object.assign(input,{jump:false,duck:false,home:false});curtainType='';toastUntil=0;
-   show('lobby-caption',false);show('lobby-panel',false);show('run-panel',true);show('run-hud',true);show('touch-controls',true);show('pause',true);show('curtain',false);show('toast',false);
+   run=createRun(mode,width);paused=false;saved=false;lastPracticeHeight='1';Object.assign(input,{jump:false,duck:false,home:false});curtainType='';toastUntil=0;previousPhase=null;
+   show('lobby-caption',false);show('lobby-panel',false);show('run-panel',true);show('run-hud',true);show('mission-strip',true);show('bank-feedback',false);show('touch-controls',true);show('pause',true);show('curtain',false);show('toast',false);
    text('mode-chip',mode==='practice'?'PRACTICE · SIMULATED':'LIVE · REAL WHEEL');text('active-label',mode==='practice'?'PRACTICE · SIMULATED WHEEL':'LIVE · REAL WHEEL');text('pause','Ⅱ');$('pause').setAttribute('aria-label','Pause game');
    resize();stage.focus?.({preventScroll:true});if(window.innerWidth<=760)stage.scrollIntoView?.({block:'start',behavior:reducedMotion?'auto':'smooth'});effect('jump');notice('Tap twice to double jump. Hold ↓ to duck.',3.8);return true;
  }
- function finish(){if(saved||!run||run.status==='running')return;saved=true;saveRecord(run.mode,run,storage);records();show('touch-controls',false);show('pause',false);setCurtain('result');effect(run.status==='home'?'home':'hit');$('retry').disabled=run.mode==='live'&&tracker.current(clock()).phase!=='running';text('retry',$('retry').disabled?'Real wheel not running · lobby below':'One more run ↗');$('retry').focus?.({preventScroll:true});}
+ function finish(){if(saved||!run||run.status==='running')return;saved=true;saveRecord(run.mode,run,storage);records();show('touch-controls',false);show('pause',false);setCurtain('result');effect(run.status==='home'?'home':'hit');$('retry').disabled=false;text('retry','One more run ↗');$('retry').focus?.({preventScroll:true});}
  function lobby(){
    if(run&&!saved){run.pouch=0;run.status='over';saveRecord(run.mode,run,storage);records();}
-   run=null;paused=false;Object.assign(input,{jump:false,duck:false,home:false});show('curtain',false);show('run-panel',false);show('run-hud',false);show('touch-controls',false);show('pause',false);show('toast',false);show('lobby-caption',true);show('lobby-panel',true);text('mode-chip','READY WHEN YOU ARE');resize();$('start-practice').focus?.({preventScroll:true});
+   run=null;paused=false;Object.assign(input,{jump:false,duck:false,home:false});show('curtain',false);show('run-panel',false);show('run-hud',false);show('mission-strip',false);show('bank-feedback',false);stage.setAttribute('data-zoomies','false');show('touch-controls',false);show('pause',false);show('toast',false);show('lobby-caption',true);show('lobby-panel',true);text('mode-chip','READY WHEN YOU ARE');resize();$('start-practice').focus?.({preventScroll:true});
  }
  function togglePause(force){
    if(!run||run.status!=='running')return;paused=force??!paused;input.jump=false;input.duck=false;
@@ -77,11 +77,19 @@ export function bootGame({document=globalThis.document,window=globalThis.window,
  function hud(w){
    text('pouch',run.pouch);text('banked',run.banked);text('run-distance',Math.floor(run.distance));text('hearts',Array.from({length:3},(_,i)=>i<run.lives?'♥':'♡').join(' '));$('hearts').setAttribute('aria-label',`${run.lives} lives`);
    $('pouch-fill').style.width=`${run.pouch/CAPACITY*100}%`;$('pouch-meter').setAttribute('aria-valuenow',String(run.pouch));
-   text('pouch-note',run.pouch===40?'Full cheeks. Find a burrow or head home.':run.pouch>=30?'Heavy cheeks. Your jumps are a little lower.':run.pouch>=15?'Looking suspiciously snack-shaped.':'Little cheeks. Big potential.');
+   text('pouch-note',run.pouch>=36?`Stumble risk · ${Math.round(run.pressure*100)}% pressure. Hold Duck to steady, or bank.`:run.pouch>=30?`Heavy cheeks · ${Math.round(loadFor(run.pouch)*25)}% slower. Bank to shed the weight.`:run.pouch>=15?'Looking suspiciously snack-shaped.':'Little cheeks. Big potential.');
+   $('pouch-meter').setAttribute('data-heavy',String(run.pouch>=30));$('pressure-fill').style.width=`${run.pressure*100}%`;
+   text('load-state',run.pouch>=36?'OVERSTUFFED':run.pouch>=30?'HEAVY':'LIGHT');
+   text('pouch-hud',`${run.pouch}/40 seeds · ${run.pouch>=36?`${Math.round(run.pressure*100)}% pressure · Duck to steady`:run.pouch>=30?'heavy':'light'}`);
+   const goal=objectiveFor(run,w),percent=Math.min(100,Math.round(goal.progress/goal.target*100));
+   text('mission-title',goal.title);text('mission-copy',goal.copy);text('mission-count',`${run.missions.completed} GOALS`);text('mission-progress',w.phase==='unknown'?'WAITING':`${Math.floor(goal.progress)} / ${goal.target}${goal.unit}`);
+   $('mission-fill').style.width=`${percent}%`;$('mission-meter').setAttribute('aria-valuenow',String(percent));
+   show('bank-feedback',run.bankFlash>0);text('bank-feedback',`+${run.lastBank} seeds safe · cheeks empty`);
    text('active-state',w.phase==='running'?'RUNNING':w.phase==='sleeping'?'SLEEPING':'NO SIGNAL');$('active-dot').className=`status-dot ${w.phase}`;text('active-rpm',w.rpm===null?'— RPM':`${Math.round(w.rpm)} RPM`);
    text('active-block',w.simulated?`Simulated block #${w.height}`:`Projected block ${w.height?'#'+w.height:'—'}`);text('settled-block',w.simulated?'Training clock · not onchain':`Settled ${w.settledHeight?'#'+w.settledHeight:'—'} · Ethereum Sepolia`);$('block-fill').style.width=`${w.progress*100}%`;
-   show('zoomies',w.phase==='running'&&w.rpm>=70);$('home').disabled=w.phase==='unknown'||run.status!=='running';text('home',w.phase==='sleeping'?'Retreat & save your pouch ↗':'Go home & bank ↗');
-   text('trail-tip',w.phase==='unknown'?'No signal, no movement, no score. Your existing pouch stays untouched.':w.phase==='sleeping'?"He's asleep. Seeds and scored metres are locked; traps get meaner. Retreat with what you already earned.":'Seeds in your cheeks are at risk. Head home to bank, or land at the next block’s burrow to keep running.');
+   const zooming=w.phase==='running'&&w.rpm>=70;show('zoomies',zooming);stage.setAttribute('data-zoomies',String(zooming));
+   text('mode-chip',run.mode==='practice'?'PRACTICE · SIMULATED':w.phase==='sleeping'?'LIVE · SLEEP SURVIVAL':w.phase==='unknown'?'LIVE · WAITING':'LIVE · REAL WHEEL');$('home').disabled=w.phase==='unknown'||run.status!=='running';text('home',w.phase==='sleeping'?'Retreat & save your pouch ↗':'Go home & bank ↗');
+   text('trail-tip',w.phase==='unknown'?'No signal, no movement, no score. Your existing pouch stays untouched.':w.phase==='sleeping'?"Night rules: slower trail, more owls and mushrooms. Survive for local goals or retreat with your pouch. No new seeds or run metres.":'Seeds in your cheeks are at risk. Head home to bank, or land at the next block’s burrow to keep running.');
  }
  function update(dt){
    dt=Math.min(.05,Math.max(0,dt));animTime+=dt;const live=telemetry();let w=currentWheel();
@@ -91,18 +99,29 @@ export function bootGame({document=globalThis.document,window=globalThis.window,
        else{
          if(curtainType==='offline')setCurtain('');
          if(run.mode==='practice'&&w.height!==lastPracticeHeight){lastPracticeHeight=w.height;if(w.phase==='running'){checkpoint(run,w.height);notice(`SIMULATED BLOCK #${w.height} · Bank ahead`,3);effect('checkpoint');}}
+         if(w.phase==='sleeping'&&previousPhase!=='sleeping')notice('SLEEP PHASE · Survive the night. No new seeds or run metres.',4);
+         if(w.phase==='running'&&previousPhase==='sleeping')notice('The wheel is awake. Seeds and run metres are back.',3);
+         previousPhase=w.phase;
          stepRun(run,dt,w,input);input.jump=false;input.home=false;
-         for(const event of run.events){effect(event.kind);if(event.kind==='hit')notice('Ouch. Half your pouch spilled.',2);if(event.kind==='bank')notice(`${event.value} seeds safe at home. Nice cheeks.`,2.6);}
+         for(const event of run.events){
+           effect(event.kind);
+           if(event.kind==='zoomies')notice('ZOOMIES · 70+ RPM. Every seed is worth DOUBLE!',3);
+           if(event.kind==='hit')notice('Ouch. Half your pouch spilled.',2);
+           if(event.kind==='stumble')notice(`Stumbled! ${event.value} seeds spilled. Hold Duck to steady full cheeks.`,3);
+           if(event.kind==='bank')notice(`${event.value} seeds banked. Weight gone.${run.events.some(e=>e.kind==='mission')?' Goal complete!':''}`,3);
+           if(event.kind==='mission'&&!run.events.some(e=>e.kind==='bank'))notice(`GOAL COMPLETE · ${event.title}. No bonus seeds.`,3);
+         }
        }
      }
      w=currentWheel();hud(w);finish();
-     if(saved){$('retry').disabled=run.mode==='live'&&live.phase!=='running';text('retry',$('retry').disabled?'Wheel not running · back to lobby':'One more run ↗');}
+     if(saved){$('retry').disabled=false;text('retry',run.mode==='live'&&live.phase==='unknown'?'Enter Live waiting room ↗':'One more run ↗');}
    }
    if(animTime>toastUntil)show('toast',false);
    const sceneRun=run||{travel:0,danger:0};drawScene(ctx,width,height,sceneRun,run?w:live,reducedMotion&&!run?0:animTime,{lobby:!run,reducedMotion});
  }
  on($('start-live'),'click',()=>start('live'));on($('start-practice'),'click',()=>start('practice'));
  on($('pause'),'click',()=>togglePause());on($('resume'),'click',()=>togglePause(false));on($('retry'),'click',()=>start(run?.mode||'practice'));on($('back'),'click',lobby);
+ on($('offline-practice'),'click',()=>{lobby();start('practice');});
  on($('home'),'click',()=>{if(run?.status==='running'&&!paused&&currentWheel().phase!=='unknown')input.home=true;});
  on($('sound'),'click',()=>{sound=!sound;$('sound').setAttribute('aria-pressed',String(sound));$('sound').setAttribute('aria-label',sound?'Disable game sound':'Enable game sound');text('sound-state',sound?'on':'off');if(sound)effect('seed');});
  const jump=event=>{event.preventDefault?.();if(run?.status==='running'&&!paused)input.jump=true;};

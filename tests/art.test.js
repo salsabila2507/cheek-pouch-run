@@ -14,3 +14,19 @@ test('desktop and portrait forest scenes paint completely without invalid coordi
  const pixels=c.getContext('2d').getImageData(0,0,width,height).data;assert.equal(pixels[3],255);assert.ok(new Set(pixels).size>40);
  }
 });
+
+test('ZOOMIES has an unmistakable static gold trail even with reduced motion',()=>{
+ const width=800,height=420,s=createRun('live',width,1),ground=Math.round(height*.77);
+ const normal=createCanvas(width,height),boost=createCanvas(width,height);
+ drawScene(normal.getContext('2d'),width,height,s,{phase:'running',rpm:50},0,{reducedMotion:true});
+ drawScene(boost.getContext('2d'),width,height,s,{phase:'running',rpm:75},0,{reducedMotion:true});
+ const region=c=>c.getContext('2d').getImageData(s.x-60,ground-35,25,20).data;
+ assert.notDeepEqual(region(boost),region(normal),'gold scarf trail is visible behind the hamster');
+});
+test('an overstuffed pressure warning is drawn above the player',()=>{
+ const s=createRun('live',800,1);s.pouch=40;const low=createCanvas(800,420),high=createCanvas(800,420);
+ drawScene(low.getContext('2d'),800,420,s,{phase:'running',rpm:50},0);s.pressure=.8;
+ drawScene(high.getContext('2d'),800,420,s,{phase:'running',rpm:50},0);
+ const region=c=>c.getContext('2d').getImageData(s.x-10,Math.round(420*.77)-80,20,20).data;
+ assert.notDeepEqual(region(high),region(low));
+});

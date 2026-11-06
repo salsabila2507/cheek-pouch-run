@@ -1,7 +1,7 @@
 {
   "name": "Cheek Pouch Run",
   "author": "0xyas",
-  "description": "Original pixel forest runner with cheek-pouch risk, real-RPM speed and observed-block burrow checkpoints.",
+  "description": "Original real-wheel forest runner: heavy cheek-pouch risk and duck-to-steady pressure, block burrow banking, ZOOMIES double pickups, playable sleep survival and local missions. Live never simulates RPM.",
   "integration": {
     "statusEndpoint": "https://api.squeekchain.com/v1/status",
     "schemaVersion": 1,

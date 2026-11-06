@@ -42,3 +42,38 @@ test('hits spill half a pouch; third hit loses unbanked but keeps banked seeds',
 test('seed pouch capacity is finite and terminal states cannot accrue score',()=>{
  const s=createRun('live',960,1);if(!s)return assert.fail('run missing');s.pouch=39;s.entities=[{kind:'gold',x:s.x+3,alt:22,r:9,value:5}];tick(s);assert.equal(s.pouch,40);s.status='over';const before=s.distance;tick(s);assert.equal(s.distance,before);
 });
+
+const isolated=(pouch=0)=>{const s=createRun('live',800,17);s.pouch=pouch;s.spawnIn=1000;s.seedIn=1000;return s;};
+test('heavy cheeks progressively slow the trail and lower jumps',()=>{
+ const light=isolated(),heavy=isolated(40);tick(light,running,{jump:true});tick(heavy,running,{jump:true});
+ assert.ok(heavy.travel<light.travel*.85,'full pouch slows speed at least 15%');assert.ok(heavy.y<light.y*.9,'full pouch lowers jump');
+});
+test('overstuffed cheeks warn before a deterministic stumble spills seeds, not lives',()=>{
+ const s=isolated(40);for(let i=0;i<40;i++)stepRun(s,.05,running);
+ assert.ok(s.pressure>0);assert.equal(s.pouch,40,'warning gives time to respond');
+ let stumbled=false;for(let i=0;i<25;i++){stepRun(s,.05,running);stumbled ||= s.events.some(e=>e.kind==='stumble');}
+ assert.equal(stumbled,true);assert.equal(s.pouch,30);assert.equal(s.lives,3);assert.ok(s.stumbleFor>0);
+});
+test('ducking steadies an overstuffed pouch; banking removes pressure and weight',()=>{
+ const s=isolated(38);for(let i=0;i<30;i++)stepRun(s,.05,running);const pressure=s.pressure;
+ for(let i=0;i<10;i++)stepRun(s,.05,running,{duck:true});assert.ok(s.pressure<pressure);assert.equal(s.pouch,38);
+ bankPouch(s);assert.equal(s.pressure,0);assert.equal(s.pouch,0);assert.equal(s.bankCount,1);assert.ok(s.bankFlash>0);
+});
+test('banking completes local missions once, without awarding extra seeds',()=>{
+ const s=isolated(15);bankPouch(s);assert.equal(s.banked,15);assert.equal(s.missions.completed,1);assert.equal(s.missions.bankTarget,24);
+ bankPouch(s);assert.equal(s.missions.completed,1);assert.equal(s.bankCount,1);assert.ok(s.events.some(e=>e.kind==='mission'));
+});
+test('sleep is playable at a slower pace and has a non-scoring survival objective',()=>{
+ const s=isolated();for(let i=0;i<241;i++)stepRun(s,.05,asleep);
+ assert.equal(s.distance,0);assert.equal(s.pouch,0);assert.equal(s.banked,0);assert.ok(s.travel>0);assert.equal(s.missions.completed,1);assert.equal(s.missions.sleepTarget,24);
+ assert.ok(speedFor(asleep)<speedFor(running));
+});
+test('ZOOMIES announces entry once and can be re-entered after sleep',()=>{
+ const s=isolated();tick(s,{...running,rpm:70});assert.ok(s.events.some(e=>e.kind==='zoomies'));assert.equal(s.zoomies,true);
+ tick(s,{...running,rpm:75});assert.equal(s.events.some(e=>e.kind==='zoomies'),false);
+ tick(s,asleep);assert.equal(s.zoomies,false);tick(s,{...running,rpm:70});assert.ok(s.events.some(e=>e.kind==='zoomies'));
+});
+test('sleep objectives and pressure are frozen with unknown or simulated Live telemetry',()=>{
+ const s=isolated(40);const before=JSON.stringify(s);tick(s,{phase:'unknown'});assert.equal(JSON.stringify(s),before);
+ tick(s,{...asleep,simulated:true});assert.equal(JSON.stringify(s),before);
+});

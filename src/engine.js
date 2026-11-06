@@ -2,11 +2,33 @@ export const CAPACITY=40;
 export function createRun(mode,width=960,seed=Date.now()) {
   if(!['live','practice'].includes(mode)) throw new Error('Unknown game mode');
   return {mode,width,x:Math.max(85,width*.2),status:'running',elapsed:0,distance:0,travel:0,pouch:0,banked:0,lives:3,
-    y:0,vy:0,jumps:0,duck:false,entities:[],particles:[],events:[],spawnIn:2.8,seedIn:.6,invulnerable:0,danger:0,checkpoints:[],checkpointCount:0,rng:seed>>>0,combo:0};
+    y:0,vy:0,jumps:0,duck:false,entities:[],particles:[],events:[],spawnIn:2.8,seedIn:.6,invulnerable:0,danger:0,checkpoints:[],checkpointCount:0,rng:seed>>>0,combo:0,pressure:0,stumbleFor:0,zoomies:false,bankCount:0,bankFlash:0,lastBank:0,
+    missions:{completed:0,bankTarget:12,sleepSeconds:0,sleepTarget:12}};
 }
 function random(s){s.rng=(Math.imul(1664525,s.rng)+1013904223)>>>0;return s.rng/4294967296;}
-export function speedFor(w){return w.phase==='sleeping'?205:Math.min(395,140+Math.max(0,w.rpm||0)*2.8);}
-export function bankPouch(s) {const value=s.pouch;s.banked+=value;s.pouch=0;if(value)s.events.push({kind:'bank',value});return value;}
+export function loadFor(pouch){return Math.min(1,Math.max(0,(pouch-28)/12));}
+export function speedFor(w,pouch=0){
+  const base=w.phase==='sleeping'?175:Math.min(395,140+Math.max(0,w.rpm||0)*2.8);
+  return base*(1-loadFor(pouch)*.25);
+}
+export function bankPouch(s) {
+  const value=s.pouch;s.banked+=value;s.pouch=0;s.pressure=0;s.stumbleFor=0;
+  if(value){
+    s.bankCount++;s.bankFlash=2.6;s.lastBank=value;s.events.push({kind:'bank',value});
+    while(s.banked>=s.missions.bankTarget){
+      s.events.push({kind:'mission',title:`Banked ${s.missions.bankTarget} seeds`});
+      s.missions.completed++;s.missions.bankTarget+=12;
+    }
+  }
+  return value;
+}
+/** Local objectives never create seeds or imitate wheel work. */
+export function objectiveFor(s,w){
+  if(w.phase==='unknown')return {title:'Wait for real wheel data',copy:'Your run is frozen. Practice is a separate simulation.',progress:0,target:1,unit:''};
+  if(w.phase==='sleeping')return {title:`Survive ${s.missions.sleepTarget}s of sleep`,copy:'Jump mushrooms. Duck owls. No new seeds or run metres.',progress:s.missions.sleepSeconds,target:s.missions.sleepTarget,unit:'s'};
+  const burrow=s.entities.some(e=>e.kind==='burrow'&&e.x>s.x-36);
+  return {title:`Bank ${s.missions.bankTarget} seeds`,copy:burrow?'Burrow ahead · land on the ground to bank and keep running.':'Reach the next block’s burrow, or go home to bank now.',progress:s.banked,target:s.missions.bankTarget,unit:' seeds'};
+}
 export function checkpoint(s,id) {
   if(!/^(0|[1-9]\d*)$/.test(String(id)) || s.status!=='running' || s.checkpoints.includes(String(id))) return false;
   s.checkpoints.push(String(id));s.checkpointCount++;
@@ -35,18 +57,26 @@ export function stepRun(s,dt,w,input={}) {
   dt=Math.min(.05,Math.max(0,dt));s.events=[];
   if(input.home){bankPouch(s);s.status='home';return s;}
   const awake=w.phase==='running',zoomies=awake && w.rpm>=70;
+  if(zoomies&&!s.zoomies)s.events.push({kind:'zoomies'});s.zoomies=zoomies;
+  s.bankFlash=Math.max(0,s.bankFlash-dt);s.stumbleFor=Math.max(0,s.stumbleFor-dt);
   s.elapsed+=dt;s.invulnerable=Math.max(0,s.invulnerable-dt);s.danger=Math.max(0,Math.min(1,s.danger+(awake?-dt*.4:dt*.18)));
-  const speed=speedFor(w);s.travel+=speed*dt;if(awake)s.distance+=speed*dt/18;
   s.duck=!!input.duck && s.y===0;
-  if(input.jump && s.jumps<2){s.vy=(s.jumps?390:455)*(s.pouch>=30?.94:1);s.jumps++;s.duck=false;s.events.push({kind:'jump'});burst(s,s.x,s.y,'#f2c47d',4);}
+  // Greed is a readable, controllable risk, never a random punishment.
+  s.pressure=Math.max(0,s.pressure+(s.pouch>=36&&!s.duck?dt/3:-dt*.8));
+  if(s.pressure>=1){
+    const value=Math.ceil(s.pouch*.25);s.pouch-=value;s.pressure=0;s.stumbleFor=.65;s.combo=0;
+    burst(s,s.x,25,'#e9bc71',12);s.events.push({kind:'stumble',value});
+  }
+  const speed=speedFor(w,s.pouch)*(s.stumbleFor>0?.65:1);s.travel+=speed*dt;if(awake)s.distance+=speed*dt/18;
+  if(input.jump && s.jumps<2){s.vy=(s.jumps?390:455)*(1-loadFor(s.pouch)*.16);s.jumps++;s.duck=false;s.events.push({kind:'jump'});burst(s,s.x,s.y,'#f2c47d',4);}
   s.y+=s.vy*dt;s.vy-=1250*dt;
   if(s.y<=0){s.y=0;s.vy=0;s.jumps=0;}
   s.spawnIn-=dt;s.seedIn-=dt;spawn(s,awake);
   const height=s.duck?22:44;
   for(const e of s.entities){
-    const before=e.x;e.x-=speed*dt;
+    e.x-=speed*dt;
     if(e.kind==='burrow'){
-      if(before>=s.x && e.x<s.x && s.y<25){bankPouch(s);s.invulnerable=Math.max(s.invulnerable,1.2);e.used=true;burst(s,s.x,25,'#b6d6a2',18);s.events.push({kind:'safe'});}
+      if(e.x<=s.x+e.width/2 && e.x>=s.x-e.width/2 && s.y<25){bankPouch(s);s.invulnerable=Math.max(s.invulnerable,1.2);e.used=true;burst(s,s.x,25,'#b6d6a2',18);s.events.push({kind:'safe'});}
       continue;
     }
     const close=Math.abs(e.x-s.x)<(e.width||12)/2+16;
@@ -57,8 +87,15 @@ export function stepRun(s,dt,w,input={}) {
         burst(s,e.x,e.alt,e.kind==='gold'?'#fff1a3':'#edbc66',4);s.events.push({kind:'seed',value:gain,golden:e.kind==='gold'});
       }
     }else if(s.invulnerable===0 && s.y<e.alt+e.height && s.y+height>e.alt){
-      s.lives--;s.pouch=Math.floor(s.pouch/2);s.combo=0;s.invulnerable=1.6;e.used=true;burst(s,s.x,20,'#f38a83',15);s.events.push({kind:'hit'});
+      s.lives--;s.pouch=Math.floor(s.pouch/2);s.pressure=0;s.combo=0;s.invulnerable=1.6;e.used=true;burst(s,s.x,20,'#f38a83',15);s.events.push({kind:'hit'});
       if(s.lives<=0){s.status='over';s.pouch=0;break;}
+    }
+  }
+  if(!awake&&s.status==='running'){
+    s.missions.sleepSeconds+=dt;
+    if(s.missions.sleepSeconds+1e-8>=s.missions.sleepTarget){
+      s.events.push({kind:'mission',title:`Survived ${s.missions.sleepTarget}s of sleep`});
+      s.missions.completed++;s.missions.sleepTarget+=12;
     }
   }
   s.entities=s.entities.filter(e=>e.x>-100 && !e.used);

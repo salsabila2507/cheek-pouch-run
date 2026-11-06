@@ -92,15 +92,29 @@ export function drawScene(ctx,width,height,s,w,time=0,{lobby=false,reducedMotion
   // Hero hamster is larger than the gameplay sprite and wears the same mint scarf.
   drawHamster(ctx,width*.36,ground,{scale:width<500?3.2:4.4,pouch:25,time,sleep});
  }else{
+  const zooming=w.phase==='running'&&w.rpm>=70;
+  if(zooming){
+   // A static golden scarf wake remains legible with reduced motion.
+   rect(ctx,s.x-58,ground-s.y-28,20,4,'#ffe0a1');rect(ctx,s.x-48,ground-s.y-18,15,3,'#e9bc71');
+   if(!reducedMotion)for(let i=3;i>0;i--){ctx.globalAlpha=.07+(3-i)*.035;drawHamster(ctx,s.x-i*17,ground-s.y,{scale:2.6,pouch:s.pouch,time,jump:s.y>0,duck:s.duck});}
+   ctx.globalAlpha=1;
+  }
   for(const e of s.entities){const y=ground-e.alt;
    if(e.kind==='seed'||e.kind==='gold') {ctx.globalAlpha=sleep?.28:1;seed(ctx,e.x,y,e.kind==='gold',time);ctx.globalAlpha=1;}
    else if(e.kind==='mushroom')mushroom(ctx,e.x,ground,.95,sleep);
    else if(e.kind==='owl')owl(ctx,e.x,y-e.height/2,time);
-   else if(e.kind==='burrow')burrow(ctx,e.x,ground,time);
+   else if(e.kind==='burrow'){
+    burrow(ctx,e.x,ground,time);
+    rect(ctx,e.x-44,ground-113,88,17,'#263e35');ctx.fillStyle='#fff0ce';ctx.font='bold 9px monospace';ctx.textAlign='center';ctx.fillText('LAND TO BANK',e.x,ground-101);ctx.textAlign='start';
+    rect(ctx,e.x-2,ground-93,4,8,'#fff0ce');rect(ctx,e.x-6,ground-88,12,3,'#fff0ce');
+   }
   }
   ctx.globalAlpha=s.invulnerable>0 && Math.floor(time*15)%2?.35:1;
   rect(ctx,s.x-24,ground-2,48,4,'#263e38');
   drawHamster(ctx,s.x,ground-s.y,{scale:2.6,pouch:s.pouch,time,jump:s.y>0,duck:s.duck});ctx.globalAlpha=1;
+  if(s.pressure>.6){
+   rect(ctx,s.x-8,ground-s.y-79,16,19,'#263e35');rect(ctx,s.x-2,ground-s.y-76,4,8,'#ffe0a1');rect(ctx,s.x-2,ground-s.y-65,4,3,'#ffe0a1');
+  }
   for(const p of s.particles){ctx.globalAlpha=Math.min(1,p.life*2);rect(ctx,p.x,ground-p.y,4,4,p.color);}ctx.globalAlpha=1;
  }
  // Foreground ferns and pixel flowers.

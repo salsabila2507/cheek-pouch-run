@@ -23,8 +23,11 @@ Source publication and Vercel hosting do not supply a verified wallet, an IMD jo
 
 ## Before claiming ready for review
 - Finish real-browser touch/keyboard/responsive QA; the current automated DOM tests do not replace it.
-- Check all current board projects, including the six not returned by the fetch.
+- Check all current board projects, including the seven not returned by the latest fetch.
 - Re-run tests and live outage/sleep/block checks on the actual production origin.
 - Confirm CORS access to the public API from that origin.
 - Verify ownership metadata and final public source URL are the creator’s.
 - Obtain Squeekchain team approval; this document is not approval.
+
+## Finished-run update
+The local update preserves real hardware validation, optimistic/settled separation and one-time observed-block encounters. Sleep is playable without synthetic RPM or seed scoring; transport failure remains frozen. Pouch pressure, bank goals and night-survival bests are browser-local game mechanics, not onchain rewards. Code lane rules were reopened at https://squeekchain.com/genesis/code; the build is still not submitted, not IMD-built and not approved. Publishing this update is a separate action from building and testing it.
