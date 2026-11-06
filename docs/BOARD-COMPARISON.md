@@ -23,7 +23,7 @@ The latest public fetch reported **19 projects** but returned **12 descriptions*
 ## Original identity
 
 - Title: **Cheek Pouch Run**, creator **0xyas**. Independent project by 0xyas.
-- Signature loop: visibly bulging cheek pouch → weight slowdown + pressure deadline → duck to steady or stumble/spill → double-jump/duck physical risk → spill on impact → real-block golden burst + land-to-bank burrow → continue or extract.
+- Signature loop: visibly bulging cheek pouch → weight slowdown + pressure deadline → duck to steady or stumble/spill → double-jump/duck physical risk → spill on impact → real-block golden burst + land-to-bank or Duck+land recover → awake nest prep that softens sleep hazards → continue or extract.
 - Original pixel forest, mint-scarf hamster, seed arcs, owls, mushrooms and warm field-guide editorial UI. No other project’s code or art was opened or copied.
 - Genuine sleep opens a slower night-survival challenge with non-scoring local goals and a separate survival best; failed telemetry opens an honest frozen waiting room.
 - Live and Practice have explicit, separate sources and records. No simulation masquerades as telemetry.

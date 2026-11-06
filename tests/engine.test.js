@@ -77,3 +77,18 @@ test('sleep objectives and pressure are frozen with unknown or simulated Live te
  const s=isolated(40);const before=JSON.stringify(s);tick(s,{phase:'unknown'});assert.equal(JSON.stringify(s),before);
  tick(s,{...asleep,simulated:true});assert.equal(JSON.stringify(s),before);
 });
+
+test('day prep stocks nest and a burrow recover spends seeds for a life',()=>{
+ const s=isolated(20);s.lives=2;s.entities=[{kind:'burrow',x:s.x+3,width:72,alt:0,height:65,id:'1200'}];
+ tick(s,running,{duck:true});
+ assert.equal(s.lives,3);assert.equal(s.recoverCount,1);assert.equal(s.pouch,0);assert.equal(s.banked,10);assert.ok(s.nest>=2);
+});
+test('seed combos stock nest while awake without inventing RPM rewards',()=>{
+ const s=isolated();s.spawnIn=1000;s.seedIn=1000;
+ for(let i=0;i<5;i++){s.entities=[{kind:'seed',x:s.x+3,alt:22,r:7,value:1}];tick(s,running);}
+ assert.equal(s.pouch,5);assert.equal(s.combo,5);assert.ok(s.nest>=2);assert.ok(s.events.some(e=>e.kind==='nest'));
+});
+test('nest can absorb one sleep hit instead of spending a life',()=>{
+ const s=isolated();s.nest=8;s.entities=[{kind:'mushroom',x:s.x+3,alt:0,height:38,width:32}];
+ tick(s,asleep);assert.equal(s.lives,3);assert.ok(s.nest<8);assert.ok(s.events.some(e=>e.kind==='nest-save'));
+});

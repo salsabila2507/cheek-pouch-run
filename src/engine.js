@@ -3,6 +3,7 @@ export function createRun(mode,width=960,seed=Date.now()) {
   if(!['live','practice'].includes(mode)) throw new Error('Unknown game mode');
   return {mode,width,x:Math.max(85,width*.2),status:'running',elapsed:0,distance:0,travel:0,pouch:0,banked:0,lives:3,
     y:0,vy:0,jumps:0,duck:false,entities:[],particles:[],events:[],spawnIn:2.8,seedIn:.6,invulnerable:0,danger:0,checkpoints:[],checkpointCount:0,rng:seed>>>0,combo:0,pressure:0,stumbleFor:0,zoomies:false,bankCount:0,bankFlash:0,lastBank:0,
+    nest:0,nestFlash:0,recoverCount:0,
     missions:{completed:0,bankTarget:12,sleepSeconds:0,sleepTarget:12}};
 }
 function random(s){s.rng=(Math.imul(1664525,s.rng)+1013904223)>>>0;return s.rng/4294967296;}
@@ -22,12 +23,33 @@ export function bankPouch(s) {
   }
   return value;
 }
+
+/** Nest stock built while awake softens the next sleep phase. Never fakes RPM. */
+export function stockNest(s, amount) {
+  const gain = Math.max(0, Math.floor(amount||0));
+  if(!gain) return 0;
+  s.nest = Math.min(24, s.nest + gain);
+  s.nestFlash = 2.2;
+  s.events.push({kind:'nest',value:gain});
+  return gain;
+}
+/** Burrow choice: duck = recover a life for 10 seeds then bank the rest; land = bank all. */
+export function resolveBurrow(s, {recover=false}={}) {
+  if(recover && s.lives<3 && s.pouch>=10){
+    s.pouch -= 10; s.lives++; s.recoverCount++; s.invulnerable = Math.max(s.invulnerable, 1.4);
+    s.events.push({kind:'recover',value:10});
+  }
+  const banked = bankPouch(s);
+  // Carry a little nest from each real-block bank so day prep matters at night.
+  if(banked) stockNest(s, Math.min(6, Math.ceil(banked/5)));
+  return banked;
+}
 /** Local objectives never create seeds or imitate wheel work. */
 export function objectiveFor(s,w){
   if(w.phase==='unknown')return {title:'Wait for real wheel data',copy:'Your run is frozen. Practice is a separate simulation.',progress:0,target:1,unit:''};
-  if(w.phase==='sleeping')return {title:`Survive ${s.missions.sleepTarget}s of sleep`,copy:'Jump mushrooms. Duck owls. No new seeds or run metres.',progress:s.missions.sleepSeconds,target:s.missions.sleepTarget,unit:'s'};
+  if(w.phase==='sleeping')return {title:`Survive ${s.missions.sleepTarget}s of sleep`,copy:s.nest?`Nest stock ${s.nest} softens owls. Jump mushrooms. Duck owls. No new seeds.`:'Jump mushrooms. Duck owls. Stock a nest while awake next time.',progress:s.missions.sleepSeconds,target:s.missions.sleepTarget,unit:'s'};
   const burrow=s.entities.some(e=>e.kind==='burrow'&&e.x>s.x-36);
-  return {title:`Bank ${s.missions.bankTarget} seeds`,copy:burrow?'Burrow ahead · land on the ground to bank and keep running.':'Reach the next block’s burrow, or go home to bank now.',progress:s.banked,target:s.missions.bankTarget,unit:' seeds'};
+  return {title:`Bank ${s.missions.bankTarget} seeds`,copy:burrow?'Burrow ahead · land to bank, or Duck+land to spend 10 seeds for +1 life then bank.':'Reach the next block’s burrow. Day banks also stock nest for night.',progress:s.banked,target:s.missions.bankTarget,unit:' seeds'};
 }
 export function checkpoint(s,id) {
   if(!/^(0|[1-9]\d*)$/.test(String(id)) || s.status!=='running' || s.checkpoints.includes(String(id))) return false;
@@ -43,8 +65,9 @@ function burst(s,x,y,color,count=8){for(let i=0;i<count;i++)s.particles.push({x,
 function spawn(s,awake) {
   const inCheckpoint=s.entities.some(e=>e.kind==='burrow' && e.x>s.x && e.x<s.width+160);
   if(s.spawnIn<=0 && !inCheckpoint){
-    const owl=random(s)>(awake?.72:.48);s.entities.push({kind:owl?'owl':'mushroom',x:s.width+70,alt:owl?29:0,width:owl?45:32,height:owl?24:35});
-    s.spawnIn=(awake?1.65:1.08)+random(s)*.7;
+    const nestEase=!awake && s.nest>0;
+    const owl=random(s)>(awake?.72:(nestEase?.62:.48));s.entities.push({kind:owl?'owl':'mushroom',x:s.width+70,alt:owl?29:0,width:owl?45:32,height:owl?24:35});
+    s.spawnIn=(awake?1.65:(nestEase?1.35:1.08))+random(s)*.7;
   }
   if(s.seedIn<=0 && awake){
     const high=random(s)>.55;
@@ -76,7 +99,7 @@ export function stepRun(s,dt,w,input={}) {
   for(const e of s.entities){
     e.x-=speed*dt;
     if(e.kind==='burrow'){
-      if(e.x<=s.x+e.width/2 && e.x>=s.x-e.width/2 && s.y<25){bankPouch(s);s.invulnerable=Math.max(s.invulnerable,1.2);e.used=true;burst(s,s.x,25,'#b6d6a2',18);s.events.push({kind:'safe'});}
+      if(e.x<=s.x+e.width/2 && e.x>=s.x-e.width/2 && s.y<25){resolveBurrow(s,{recover:!!s.duck});s.invulnerable=Math.max(s.invulnerable,1.2);e.used=true;burst(s,s.x,25,s.duck?'#e9c48a':'#b6d6a2',18);s.events.push({kind:'safe'});}
       continue;
     }
     const close=Math.abs(e.x-s.x)<(e.width||12)/2+16;
@@ -84,19 +107,27 @@ export function stepRun(s,dt,w,input={}) {
     if(e.kind==='seed' || e.kind==='gold'){
       if(awake && e.alt>=s.y-7 && e.alt<=s.y+height+7 && s.pouch<CAPACITY){
         const gain=Math.min(CAPACITY-s.pouch,(e.value||1)*(zoomies?2:1));s.pouch+=gain;s.combo++;e.used=true;
+        if(s.combo>0 && s.combo%5===0)stockNest(s,2);
         burst(s,e.x,e.alt,e.kind==='gold'?'#fff1a3':'#edbc66',4);s.events.push({kind:'seed',value:gain,golden:e.kind==='gold'});
       }
     }else if(s.invulnerable===0 && s.y<e.alt+e.height && s.y+height>e.alt){
-      s.lives--;s.pouch=Math.floor(s.pouch/2);s.pressure=0;s.combo=0;s.invulnerable=1.6;e.used=true;burst(s,s.x,20,'#f38a83',15);s.events.push({kind:'hit'});
-      if(s.lives<=0){s.status='over';s.pouch=0;break;}
+      if(!awake && s.nest>=4){
+        s.nest-=4;s.invulnerable=1.5;e.used=true;burst(s,s.x,20,'#c9dfb5',12);s.events.push({kind:'nest-save',value:4});
+      }else{
+        s.lives--;s.pouch=Math.floor(s.pouch/2);s.pressure=0;s.combo=0;s.invulnerable=1.6;e.used=true;burst(s,s.x,20,'#f38a83',15);s.events.push({kind:'hit'});
+        if(s.lives<=0){s.status='over';s.pouch=0;break;}
+      }
     }
   }
   if(!awake&&s.status==='running'){
     s.missions.sleepSeconds+=dt;
+    if(s.nest>0){s.nest=Math.max(0,s.nest-dt*.35);s.nestFlash=Math.max(0,s.nestFlash-dt);}
     if(s.missions.sleepSeconds+1e-8>=s.missions.sleepTarget){
       s.events.push({kind:'mission',title:`Survived ${s.missions.sleepTarget}s of sleep`});
       s.missions.completed++;s.missions.sleepTarget+=12;
     }
+  }else{
+    s.nestFlash=Math.max(0,s.nestFlash-dt);
   }
   s.entities=s.entities.filter(e=>e.x>-100 && !e.used);
   for(const p of s.particles){p.x+=p.vx*dt;p.y+=p.vy*dt;p.vy-=400*dt;p.life-=dt;}

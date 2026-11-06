@@ -53,4 +53,7 @@
 
 .night-best{margin-top:12px;padding-top:12px}.best-row>span{font-size:7px;line-height:1.5}.best-row small{font-size:7px}.result-stats .result-extra{line-height:1.6}
 
-.run-hud .cheek-hud{position:absolute;left:0;top:70px;font:9px var(--mono);letter-spacing:0;color:#fff0ce}.curtain-card .button{font-size:11px}
+.run-hud .cheek-hud{position:absolute;left:0;top:70px;font:9px var(--mono);letter-spacing:0;color:#fff0ce}
+.run-hud .nest-hud{position:absolute;left:0;top:98px;font:9px var(--mono);letter-spacing:0;color:#dce8c8;background:#29473e;padding:6px 8px;border-radius:3px}
+.run-hud .nest-hud.flash{color:#eef6d8;box-shadow:0 0 0 1px #d6e8aa88}
+.curtain-card .button{font-size:11px}

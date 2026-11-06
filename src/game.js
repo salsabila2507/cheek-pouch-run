@@ -21,7 +21,7 @@ export function bootGame({document=globalThis.document,window=globalThis.window,
      const Audio=window.AudioContext||window.webkitAudioContext;if(!Audio)return;
      audio??=new Audio();if(audio.state==='suspended')void audio.resume();
      if(kind==='seed'&&animTime-lastSeedSound<.07)return;if(kind==='seed')lastSeedSound=animTime;
-     const note={jump:[330,510,.09],seed:[740,1040,.065],hit:[160,60,.2],bank:[520,920,.22],checkpoint:[440,880,.25],zoomies:[600,1200,.3],mission:[660,990,.2],stumble:[220,120,.15],home:[440,660,.2]}[kind];if(!note)return;
+     const note={jump:[330,510,.09],seed:[740,1040,.065],hit:[160,60,.2],bank:[520,920,.22],checkpoint:[440,880,.25],zoomies:[600,1200,.3],mission:[660,990,.2],stumble:[220,120,.15],home:[440,660,.2],recover:[480,760,.18],nest:[500,820,.14],'nest-save':[360,620,.16]}[kind];if(!note)return;
      const osc=audio.createOscillator(),gain=audio.createGain(),at=audio.currentTime;
      osc.type=kind==='hit'?'sawtooth':'square';osc.frequency.setValueAtTime(note[0],at);osc.frequency.exponentialRampToValueAtTime(note[1],at+note[2]);gain.gain.setValueAtTime(.018,at);gain.gain.exponentialRampToValueAtTime(.0001,at+note[2]);osc.connect(gain);gain.connect(audio.destination);osc.start(at);osc.stop(at+note[2]);
    }catch{/* Sound never blocks play. */}
@@ -48,7 +48,9 @@ export function bootGame({document=globalThis.document,window=globalThis.window,
    }else if(kind==='pause'){
      text('curtain-kicker',run?.mode==='practice'?'PRACTICE · SIMULATED':'LIVE · REAL WHEEL');text('curtain-title','Paws on pause.');text('curtain-copy','Your pouch is safe. Blocks seen while paused do not grant catch-up checkpoints.');text('back','End run (unbanked seeds lost)');
    }else if(kind==='result'){
-     text('curtain-kicker',run.mode==='practice'?'PRACTICE · SEPARATE LOCAL RECORD':'LIVE · LOCAL RECORD');text('curtain-title',run.status==='home'?'Home, sweet burrow.':'The forest got you.');text('curtain-copy',run.status==='home'?"Good instincts. Your cheeks made it home.":'Three scrapes. One lesson. Banked seeds are safe; the rest stayed in the forest.');text('result-seeds',run.banked);text('result-distance',Math.floor(run.distance));text('result-missions',run.missions.completed);text('result-banks',run.bankCount);text('result-sleep',Math.floor(run.missions.sleepSeconds));text('back','Back to the burrow');
+     text('curtain-kicker',run.mode==='practice'?'PRACTICE · SEPARATE LOCAL RECORD':'LIVE · LOCAL RECORD');text('curtain-title',run.status==='home'?'Home, sweet burrow.':'The forest got you.');text('curtain-copy',run.status==='home'?"Good instincts. Your cheeks made it home.":'Three scrapes. One lesson. Banked seeds are safe; the rest stayed in the forest.');text('result-seeds',run.banked);text('result-distance',Math.floor(run.distance));text('result-missions',run.missions.completed);text('result-banks',run.bankCount);text('result-sleep',Math.floor(run.missions.sleepSeconds));
+     const extra=$('result-extra');if(extra&&run.recoverCount)extra.textContent=`${run.bankCount} BANKS · ${run.missions.completed} GOALS · ${Math.floor(run.missions.sleepSeconds)}s NIGHT · ${run.recoverCount} HEALS`;
+     text('back','Back to the burrow');
    }
  }
  function start(mode){
@@ -76,6 +78,7 @@ export function bootGame({document=globalThis.document,window=globalThis.window,
  function currentWheel(){return run?.mode==='practice'?practiceWheel(run.elapsed):tracker.current(clock());}
  function hud(w){
    text('pouch',run.pouch);text('banked',run.banked);text('run-distance',Math.floor(run.distance));text('hearts',Array.from({length:3},(_,i)=>i<run.lives?'♥':'♡').join(' '));$('hearts').setAttribute('aria-label',`${run.lives} lives`);
+   const nestEl=$('nest-hud');if(nestEl){nestEl.hidden=run.nest<=0&&run.nestFlash<=0;nestEl.textContent=run.nest>0?`🪺 Nest ${Math.ceil(run.nest)}`:'🪺 Nest ready';nestEl.classList.toggle('flash',run.nestFlash>0);}
    $('pouch-fill').style.width=`${run.pouch/CAPACITY*100}%`;$('pouch-meter').setAttribute('aria-valuenow',String(run.pouch));
    text('pouch-note',run.pouch>=36?`Stumble risk · ${Math.round(run.pressure*100)}% pressure. Hold Duck to steady, or bank.`:run.pouch>=30?`Heavy cheeks · ${Math.round(loadFor(run.pouch)*25)}% slower. Bank to shed the weight.`:run.pouch>=15?'Looking suspiciously snack-shaped.':'Little cheeks. Big potential.');
    $('pouch-meter').setAttribute('data-heavy',String(run.pouch>=30));$('pressure-fill').style.width=`${run.pressure*100}%`;
@@ -84,7 +87,9 @@ export function bootGame({document=globalThis.document,window=globalThis.window,
    const goal=objectiveFor(run,w),percent=Math.min(100,Math.round(goal.progress/goal.target*100));
    text('mission-title',goal.title);text('mission-copy',goal.copy);text('mission-count',`${run.missions.completed} GOALS`);text('mission-progress',w.phase==='unknown'?'WAITING':`${Math.floor(goal.progress)} / ${goal.target}${goal.unit}`);
    $('mission-fill').style.width=`${percent}%`;$('mission-meter').setAttribute('aria-valuenow',String(percent));
-   show('bank-feedback',run.bankFlash>0);text('bank-feedback',`+${run.lastBank} seeds safe · cheeks empty`);
+   show('bank-feedback',run.bankFlash>0||run.nestFlash>0);
+   if(run.bankFlash>0)text('bank-feedback',`+${run.lastBank} seeds safe · nest +${Math.min(6,Math.ceil(run.lastBank/5))}`);
+   else if(run.nestFlash>0)text('bank-feedback',`Nest stocked · night will be softer`);
    text('active-state',w.phase==='running'?'RUNNING':w.phase==='sleeping'?'SLEEPING':'NO SIGNAL');$('active-dot').className=`status-dot ${w.phase}`;text('active-rpm',w.rpm===null?'— RPM':`${Math.round(w.rpm)} RPM`);
    text('active-block',w.simulated?`Simulated block #${w.height}`:`Projected block ${w.height?'#'+w.height:'—'}`);text('settled-block',w.simulated?'Training clock · not onchain':`Settled ${w.settledHeight?'#'+w.settledHeight:'—'} · Ethereum Sepolia`);$('block-fill').style.width=`${w.progress*100}%`;
    const zooming=w.phase==='running'&&w.rpm>=70;show('zoomies',zooming);stage.setAttribute('data-zoomies',String(zooming));
@@ -109,6 +114,9 @@ export function bootGame({document=globalThis.document,window=globalThis.window,
            if(event.kind==='hit')notice('Ouch. Half your pouch spilled.',2);
            if(event.kind==='stumble')notice(`Stumbled! ${event.value} seeds spilled. Hold Duck to steady full cheeks.`,3);
            if(event.kind==='bank')notice(`${event.value} seeds banked. Weight gone.${run.events.some(e=>e.kind==='mission')?' Goal complete!':''}`,3);
+           if(event.kind==='recover')notice(`Spent ${event.value} seeds · +1 life. Rest banked.`,3);
+           if(event.kind==='nest')notice(`Nest +${event.value}. Sleep hazards will ease.`,2.4);
+           if(event.kind==='nest-save')notice('Nest absorbed the hit. Keep ducking owls.',2.2);
            if(event.kind==='mission'&&!run.events.some(e=>e.kind==='bank'))notice(`GOAL COMPLETE · ${event.title}. No bonus seeds.`,3);
          }
        }
